@@ -2,6 +2,8 @@ pragma solidity 0.8.13;
 
 import "forge-std/Test.sol";
 import "forge-std/console2.sol";
+import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 import "solmate/test/utils/mocks/MockERC20.sol";
 import "contracts/factories/BribeFactory.sol";
 import "contracts/factories/GaugeFactory.sol";
@@ -58,6 +60,12 @@ abstract contract BaseTest is Test, TestOwner {
     Pair pair;
     Pair pair2;
     Pair pair3;
+    TransparentUpgradeableProxy proxy;
+    ProxyAdmin admin;
+
+    function deployProxyAdmin() public {
+        admin = new ProxyAdmin();
+    }
 
     function deployOwners() public {
         owner = TestOwner(address(this));
@@ -70,14 +78,18 @@ abstract contract BaseTest is Test, TestOwner {
     }
 
     function deployCoins() public {
+
         USDC = new MockERC20("USDC", "USDC", 6);
         FRAX = new MockERC20("FRAX", "FRAX", 18);
         DAI = new MockERC20("DAI", "DAI", 18);
-        VARA = new Vara();
         WEVE = new MockERC20("WEVE", "WEVE", 18);
         LR = new MockERC20("LR", "LR", 18);
         WETH = new TestWETH();
         stake = new TestToken("stake", "stake", 18, address(owner));
+
+        Vara implVara = new Vara();
+        proxy = new TransparentUpgradeableProxy(address(implVara), address(admin), abi.encodeWithSelector(Vara.initialize.selector));
+        VARA = Vara(address(proxy));
     }
 
     function mintStables() public {
@@ -119,14 +131,27 @@ abstract contract BaseTest is Test, TestOwner {
     }
 
     function deployPairFactoryAndRouter() public {
-        factory = new PairFactory();
+        Pair implPair = new Pair();
+        PairFactory implPairFactory = new PairFactory();
+        proxy = new TransparentUpgradeableProxy(address(implPairFactory), address(admin), abi.encodeWithSelector(PairFactory.initialize.selector, address(implPair)));
+        factory = PairFactory(address(proxy));
+
         assertEq(factory.allPairsLength(), 0);
         factory.setFee(true, 1); // set fee back to 0.01% for old tests
         factory.setFee(false, 1);
-        router = new Router(address(factory), address(WETH));
-        router2 = new Router2(address(factory), address(WETH));
+
+        Router implRouter = new Router();
+        proxy = new TransparentUpgradeableProxy(address(implRouter), address(admin), abi.encodeWithSelector(Router.initialize.selector, address(factory), address(WETH)));
+        router = Router(payable(address(proxy)));
+
+        Router2 implRouter2 = new Router2();
+        proxy = new TransparentUpgradeableProxy(address(implRouter2), address(admin), abi.encodeWithSelector(Router.initialize.selector, address(factory), address(WETH)));
+        router2 = Router2(payable(address(proxy)));
+        
         assertEq(router.factory(), address(factory));
-        lib = new VaraLibrary(address(router));
+        VaraLibrary implLib = new VaraLibrary();
+        proxy = new TransparentUpgradeableProxy(address(implLib), address(admin), abi.encodeWithSelector(VaraLibrary.initialize.selector, address(router)));
+        lib = VaraLibrary(address(router));
     }
 
     function deployPairWithOwner(address _owner) public {
@@ -158,6 +183,6 @@ abstract contract BaseTest is Test, TestOwner {
         TestOwner(_owner).transfer(address(FRAX), address(pair), TOKEN_1);
         TestOwner(_owner).mint(address(pair), _owner);
     }
-
+    
     receive() external payable {}
 }

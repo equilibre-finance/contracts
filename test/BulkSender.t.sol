@@ -38,7 +38,7 @@ contract BulkSenderTest is Test {
 
         uint amount = 1 * 1e6;
         vm.expectRevert(abi.encodePacked(BulkSender.InvalidToken.selector));
-        sender.sendSameAmountToMany( IERC20(address(0)), addresses, amount);
+        sender.sendSameAmountToMany( IERC20(address(usdc)), addresses, amount);
 
         vm.expectRevert(abi.encodePacked(BulkSender.InvalidRecipients.selector));
         sender.sendSameAmountToMany( IERC20(address(usdc)), empty, amount);

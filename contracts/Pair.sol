@@ -17,7 +17,7 @@ contract Pair is Initializable, IPair {
     uint8 public constant decimals = 18;
 
     // Used to denote stable or volatile pair, not immutable since construction happens in the initialize method for CREATE2 deterministic addresses
-    bool public immutable stable;
+    bool public stable;
 
     uint public totalSupply = 0;
 
@@ -48,8 +48,8 @@ contract Pair is Initializable, IPair {
 
     Observation[] public observations;
 
-    uint internal immutable decimals0;
-    uint internal immutable decimals1;
+    uint internal decimals0;
+    uint internal decimals1;
 
     uint public reserve0;
     uint public reserve1;

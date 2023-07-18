@@ -11,6 +11,7 @@ contract StakingTest is BaseTest {
     TestVoter voter;
 
     function deployBaseCoins() public {
+        deployProxyAdmin();
         deployOwners();
         deployCoins();
         mintStables();
@@ -49,7 +50,11 @@ contract StakingTest is BaseTest {
     function deployFactory() public {
         createLock3();
 
-        gaugeFactory = new GaugeFactory();
+        Gauge implGauge = new Gauge();
+        GaugeFactory implGaugeFactory = new GaugeFactory();
+        proxy = new TransparentUpgradeableProxy(address(implGaugeFactory), address(admin), abi.encodeWithSelector(GaugeFactory.initialize.selector, address(implGauge)));
+        gaugeFactory = GaugeFactory(address(proxy));
+
         address[] memory allowedRewards = new address[](1);
         vm.prank(address(voter));
         gaugeFactory.createGauge(address(stake), address(owner), address(owner), address(escrow), false, allowedRewards);

@@ -100,9 +100,9 @@ contract PairFactory is OwnableUpgradeable, IPairFactory {
         require(token0 != address(0), 'ZA'); // Pair: ZERO_ADDRESS
         require(getPair[token0][token1][stable] == address(0), 'PE'); // Pair: PAIR_EXISTS - single check is sufficient
         (_temp0, _temp1, _temp) = (token0, token1, stable);
-        BeaconProxy pair = new BeaconProxy(address(beacon), 
-            abi.encodeWithSelector(Pair(address(0)).initialize.selector, address(this))
-        );
+        address pair = address(new BeaconProxy(address(beacon), 
+            abi.encodeWithSelector(Pair.initialize.selector, address(this))
+        ));
         getPair[token0][token1][stable] = pair;
         getPair[token1][token0][stable] = pair; // populate mapping in the reverse direction
         allPairs.push(pair);

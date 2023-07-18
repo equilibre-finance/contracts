@@ -74,7 +74,7 @@ contract TestStakingRewards {
         require(rewardsToken.transfer(msg.sender, reward));
     }
 
-    function notifyRewardAmount(uint256 reward) external updateReward(address(0)) {
+    function notifyRewardAmount(uint256 reward) external updateReward(msg.sender) {
         require(rewardsToken.transferFrom(msg.sender, address(this), reward));
         if (block.timestamp >= periodFinish) {
             rewardRate = reward / rewardsDuration;

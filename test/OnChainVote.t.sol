@@ -1,7 +1,8 @@
 pragma solidity 0.8.13;
 
 import "solmate/test/utils/DSTestPlus.sol";
-
+import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 import "utils/TestVotingToken.sol";
 import "utils/TestGovernance.sol";
 import "utils/TestL2Governance.sol";
@@ -10,11 +11,15 @@ contract OnChainVoteTest is DSTestPlus {
   TestVotingERC20 vt;
   TestGovernance gov;
   TestL2Governance gov2;
+  TransparentUpgradeableProxy proxy;
+  ProxyAdmin admin;
 
   function setUp() public {
     vt = new TestVotingERC20("coin", "SYM");
     gov = new TestGovernance(vt);
-    gov2 = new TestL2Governance(vt);
+    TestL2Governance implgov2 = new TestL2Governance();
+    proxy = new TransparentUpgradeableProxy(address(implgov2), address(admin), abi.encodeWithSelector(TestL2Governance.initialize.selector, vt));
+    gov2 = TestL2Governance(payable(address(proxy)));
     hevm.roll(block.number + 1);
   }
 
