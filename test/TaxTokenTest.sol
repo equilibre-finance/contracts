@@ -14,6 +14,7 @@ contract TaxTokenTest is BaseTest {
     uint TOKEN_100 = 100 * 1e18;
     uint liquidityAdded;
     function setUp() public {
+        deployProxyAdmin();
         Pair implPair = new Pair();
         PairFactory implPairFactory = new PairFactory();
         proxy = new TransparentUpgradeableProxy(address(implPairFactory), address(admin), abi.encodeWithSelector(PairFactory.initialize.selector, address(implPair)));
@@ -23,7 +24,7 @@ contract TaxTokenTest is BaseTest {
 
         Router2 implRouter = new Router2();
         proxy = new TransparentUpgradeableProxy(address(implRouter), address(admin), abi.encodeWithSelector(Router.initialize.selector, address(factory), address(WETH)));
-        router = Router2(payable(address(proxy)));
+        router2 = Router2(payable(address(proxy)));
 
         taxToken = new TaxToken(address(this));
         taxToken.initialize(address(router2));

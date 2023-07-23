@@ -151,7 +151,7 @@ abstract contract BaseTest is Test, TestOwner {
         assertEq(router.factory(), address(factory));
         VaraLibrary implLib = new VaraLibrary();
         proxy = new TransparentUpgradeableProxy(address(implLib), address(admin), abi.encodeWithSelector(VaraLibrary.initialize.selector, address(router)));
-        lib = VaraLibrary(address(router));
+        lib = VaraLibrary(address(proxy));
     }
 
     function deployPairWithOwner(address _owner) public {

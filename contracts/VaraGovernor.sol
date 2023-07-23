@@ -20,7 +20,7 @@ contract VaraGovernor is
     address public team;
     uint256 public constant MAX_PROPOSAL_NUMERATOR = 50; // max 5%
     uint256 public constant PROPOSAL_DENOMINATOR = 1000;
-    uint256 public proposalNumerator = 2; // start at 0.02%
+    uint256 public proposalNumerator; // start at 0.02%
 
     constructor() {
         _disableInitializers();
@@ -31,6 +31,7 @@ contract VaraGovernor is
         __L2GovernorVotes_init(_ve);
         __L2GovernorVotesQuorumFraction_init(4); // 4%
         team = msg.sender;
+         proposalNumerator = 2;
     }
 
     function votingDelay() public pure override(IGovernor) returns (uint256) {

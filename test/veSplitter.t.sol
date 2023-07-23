@@ -31,6 +31,7 @@ import "utils/TestVoter.sol";
 import "utils/TestVotingEscrow.sol";
 import "utils/TestWETH.sol";
 import "contracts/veSplitter.sol";
+import 'contracts/interfaces/IPair.sol';
 
 contract veSplitterTest is Test {
     TestWETH WETH;
@@ -58,18 +59,17 @@ contract veSplitterTest is Test {
     veSplitter main;
     uint tokenId;
     function setUp() public {
+        console.logAddress(address(this));
         admin = new ProxyAdmin();
 
         Vara implVara = new Vara();
         proxy = new TransparentUpgradeableProxy(address(implVara), address(admin), abi.encodeWithSelector(Vara.initialize.selector));
         vara = Vara(address(proxy));
-        console.logAddress(address(proxy));
 
         Gauge implGauge = new Gauge();
         GaugeFactory implGaugeFactory = new GaugeFactory();
         proxy = new TransparentUpgradeableProxy(address(implGaugeFactory), address(admin), abi.encodeWithSelector(GaugeFactory.initialize.selector, address(implGauge)));
         gaugeFactory = GaugeFactory(address(proxy));
-        console.logAddress(address(proxy));
         
         InternalBribe implInternalBribe = new InternalBribe();
         ExternalBribe implExternalBribe = new ExternalBribe();
@@ -87,6 +87,7 @@ contract veSplitterTest is Test {
         Router2 implRouter = new Router2();
         proxy = new TransparentUpgradeableProxy(address(implRouter), address(admin), abi.encodeWithSelector(Router.initialize.selector, address(pairFactory), address(WETH)));
         router = Router2(payable(address(proxy)));
+        console.logAddress(address(router));
 
         artProxy = new VeArtProxy();
 
@@ -131,8 +132,8 @@ contract veSplitterTest is Test {
         DAI.mint(address(this), TOKEN_100);
         DAI.approve(address(router), TOKEN_100);
         vara.approve(address(router), TOKEN_100);
-
         router.addLiquidityETH{value : TOKEN_100}(address(DAI), false, TOKEN_100, 0, 0, address(this), block.timestamp);
+        
         router.addLiquidityETH{value : TOKEN_100}(address(vara), false, TOKEN_100, 0, 0, address(this), block.timestamp);
 
         pool_eth_dai = Pair(pairFactory.getPair(address(WETH), address(DAI), false));

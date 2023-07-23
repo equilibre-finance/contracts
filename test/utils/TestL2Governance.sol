@@ -15,7 +15,7 @@ contract TestL2Governance is
     L2GovernorVotesQuorumFraction
 {
     function initialize(IVotes _ve) external initializer {
-        __L2Governor_init("Vara Governor");
+        __L2Governor_init("TestL2Governor");
         __L2GovernorVotes_init(_ve);
         __L2GovernorVotesQuorumFraction_init(4); // 4%
     }

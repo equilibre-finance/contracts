@@ -30,6 +30,7 @@ contract Pair is Initializable, IPair {
     mapping(address => uint) public nonces;
 
     uint internal constant MINIMUM_LIQUIDITY = 10**3;
+    uint internal _unlocked;
 
     address public token0;
     address public token1;
@@ -60,8 +61,8 @@ contract Pair is Initializable, IPair {
 
     // index0 and index1 are used to accumulate fees, this is split out from normal trades to keep the swap "clean"
     // this further allows LP holders to easily claim fees for tokens they have/staked
-    uint public index0 = 0;
-    uint public index1 = 0;
+    uint public index0;
+    uint public index1;
 
     // position assigned to each LP to track their current index0 & index1 vs the global position
     mapping(address => uint) public supplyIndex0;
@@ -88,11 +89,13 @@ contract Pair is Initializable, IPair {
     event Transfer(address indexed from, address indexed to, uint amount);
     event Approval(address indexed owner, address indexed spender, uint amount);
 
-    function initialize(
-        address _factory
-    ) external initializer {
-        factory = _factory;
-        (address _token0, address _token1, bool _stable) = PairFactory(factory).getInitializable();
+    function initialize() external initializer {
+        _unlocked = 1;
+        index0 = 0;
+        index1 = 0;
+
+        factory = msg.sender;
+        (address _token0, address _token1, bool _stable) = PairFactory(msg.sender).getInitializable();
         (token0, token1, stable) = (_token0, _token1, _stable);
         fees = address(new PairFees(_token0, _token1));
         if (_stable) {
@@ -110,7 +113,7 @@ contract Pair is Initializable, IPair {
     }
 
     // simple re-entrancy check
-    uint internal _unlocked = 1;
+    
     modifier lock() {
         require(_unlocked == 1);
         _unlocked = 2;

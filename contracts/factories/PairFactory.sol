@@ -86,10 +86,10 @@ contract PairFactory is OwnableUpgradeable, IPairFactory {
         return _stable ? stableFee : volatileFee;
     }
 
-    function pairCodeHash() external pure returns (bytes32) {
-        return keccak256(type(Pair).creationCode);
+    function pairCodeHash() external view returns (bytes32) {
+        return keccak256(abi.encodePacked(type(BeaconProxy).creationCode, abi.encode(address(beacon), abi.encodeWithSelector(Pair.initialize.selector))));
     }
-
+ 
     function getInitializable() external view returns (address, address, bool) {
         return (_temp0, _temp1, _temp);
     }
@@ -99,9 +99,10 @@ contract PairFactory is OwnableUpgradeable, IPairFactory {
         (address token0, address token1) = tokenA < tokenB ? (tokenA, tokenB) : (tokenB, tokenA);
         require(token0 != address(0), 'ZA'); // Pair: ZERO_ADDRESS
         require(getPair[token0][token1][stable] == address(0), 'PE'); // Pair: PAIR_EXISTS - single check is sufficient
+        bytes32 salt = keccak256(abi.encodePacked(token0, token1, stable)); // notice salt includes stable as well, 3 parameters
         (_temp0, _temp1, _temp) = (token0, token1, stable);
-        address pair = address(new BeaconProxy(address(beacon), 
-            abi.encodeWithSelector(Pair.initialize.selector, address(this))
+        pair = address(new BeaconProxy{salt:salt}(address(beacon), 
+            abi.encodeWithSelector(Pair.initialize.selector)
         ));
         getPair[token0][token1][stable] = pair;
         getPair[token1][token0][stable] = pair; // populate mapping in the reverse direction

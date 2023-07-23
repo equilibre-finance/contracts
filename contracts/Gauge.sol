@@ -39,6 +39,8 @@ contract Gauge is Initializable, IGauge {
 
     mapping(address => uint) public tokenIds;
 
+    uint internal _unlocked;
+
     uint public totalSupply;
     mapping(address => uint) public balanceOf;
 
@@ -86,6 +88,8 @@ contract Gauge is Initializable, IGauge {
     event ClaimRewards(address indexed from, address indexed reward, uint amount);
 
     function initialize(address _stake, address _internal_bribe, address _external_bribe, address  __ve, address _voter, bool _forPair, address[] memory _allowedRewardTokens) external initializer {
+        _unlocked = 1;
+        
         stake = _stake;
         internal_bribe = _internal_bribe;
         external_bribe = _external_bribe;
@@ -102,7 +106,6 @@ contract Gauge is Initializable, IGauge {
     }
 
     // simple re-entrancy check
-    uint internal _unlocked = 1;
     modifier lock() {
         require(_unlocked == 1);
         _unlocked = 2;

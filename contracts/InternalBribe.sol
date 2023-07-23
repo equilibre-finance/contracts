@@ -18,6 +18,8 @@ contract InternalBribe is Initializable, IBribe {
 
     uint internal constant PRECISION = 10 ** 18;
 
+    uint internal _unlocked;
+
     uint public totalSupply;
     mapping(uint => uint) public balanceOf;
     mapping(address => mapping(uint => uint)) public tokenRewardsPerEpoch;
@@ -54,6 +56,8 @@ contract InternalBribe is Initializable, IBribe {
     event ClaimRewards(address indexed from, address indexed reward, uint amount);
 
     function initialize(address _voter, address[] memory _allowedRewardTokens) external initializer {
+        _unlocked = 1;
+        
         voter = _voter;
         _ve = IVoter(_voter)._ve();
 
@@ -66,7 +70,6 @@ contract InternalBribe is Initializable, IBribe {
     }
 
     // simple re-entrancy check
-    uint internal _unlocked = 1;
     modifier lock() {
         require(_unlocked == 1);
         _unlocked = 2;

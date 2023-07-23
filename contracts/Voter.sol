@@ -22,6 +22,7 @@ contract Voter is Initializable, IVoter {
     address public gaugefactory;
     address public bribefactory;
     uint internal constant DURATION = 7 days; // rewards are released over 7 days
+    uint internal _unlocked;
     address public minter;
     address public governor; // should be set to an IGovernor
     address public emergencyCouncil; // credibly neutral party similar to Curve's Emergency DAO
@@ -61,6 +62,8 @@ contract Voter is Initializable, IVoter {
         address  _gauges, 
         address _bribes
     ) external initializer {
+        _unlocked = 1;
+        
         _ve = __ve;
         factory = _factory;
         base = IVotingEscrow(__ve).token();
@@ -72,7 +75,6 @@ contract Voter is Initializable, IVoter {
     }
 
     // simple re-entrancy check
-    uint internal _unlocked = 1;
     modifier lock() {
         require(_unlocked == 1);
         _unlocked = 2;

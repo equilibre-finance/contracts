@@ -60,7 +60,6 @@ contract StakingTest is BaseTest {
         gaugeFactory.createGauge(address(stake), address(owner), address(owner), address(escrow), false, allowedRewards);
         address gaugeAddr = gaugeFactory.last_gauge();
         gauge = Gauge(gaugeAddr);
-
         staking = new TestStakingRewards(address(stake), address(VARA));
     }
 
@@ -71,7 +70,6 @@ contract StakingTest is BaseTest {
         stake.approve(address(gauge), 1e21);
         staking.stake(1e21);
         gauge.deposit(1e21, 1);
-
         assertEq(gauge.earned(address(VARA), address(owner)), staking.earned(address(owner)));
     }
 

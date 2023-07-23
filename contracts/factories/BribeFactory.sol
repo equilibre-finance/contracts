@@ -28,14 +28,14 @@ contract BribeFactory is OwnableUpgradeable, IBribeFactory {
     }
 
     function createInternalBribe(address[] memory allowedRewards) external returns (address) {
-        address last_internal_bribe = address(new BeaconProxy(address(internalBeacon), 
+        last_internal_bribe = address(new BeaconProxy(address(internalBeacon), 
             abi.encodeWithSelector(InternalBribe.initialize.selector, msg.sender, allowedRewards)
         ));
         return last_internal_bribe;
     }
 
     function createExternalBribe(address[] memory allowedRewards) external returns (address) {
-        address last_external_bribe = address(new BeaconProxy(address(externalBeacon), 
+        last_external_bribe = address(new BeaconProxy(address(externalBeacon), 
             abi.encodeWithSelector(ExternalBribe.initialize.selector, msg.sender, allowedRewards)
         ));
         return last_external_bribe;

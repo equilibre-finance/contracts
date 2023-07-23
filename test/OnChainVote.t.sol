@@ -18,6 +18,7 @@ contract OnChainVoteTest is DSTestPlus {
     vt = new TestVotingERC20("coin", "SYM");
     gov = new TestGovernance(vt);
     TestL2Governance implgov2 = new TestL2Governance();
+    admin = new ProxyAdmin();
     proxy = new TransparentUpgradeableProxy(address(implgov2), address(admin), abi.encodeWithSelector(TestL2Governance.initialize.selector, vt));
     gov2 = TestL2Governance(payable(address(proxy)));
     hevm.roll(block.number + 1);
