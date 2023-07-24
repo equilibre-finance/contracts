@@ -57,4 +57,15 @@ contract VaraGovernor is
             (token.getPastTotalSupply(block.timestamp) * proposalNumerator) /
             PROPOSAL_DENOMINATOR;
     }
+
+    function cancel(
+        address[] memory targets,
+        uint256[] memory values,
+        bytes[] memory calldatas,
+        bytes32 descriptionHash
+    ) public override returns (uint256) {
+        require( _msgSender() == team, "Governor: not team");
+        return _cancel(targets, values, calldatas, descriptionHash);
+    }
+
 }

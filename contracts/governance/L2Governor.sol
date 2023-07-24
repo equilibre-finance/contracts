@@ -47,6 +47,7 @@ abstract contract L2Governor is Context, ERC165, EIP712, IGovernor, IERC721Recei
     string private _name;
 
     mapping(uint256 => ProposalCore) private _proposals;
+    mapping(uint256 => address) private _proposerProposals;
 
     // This queue keeps track of the governor operating on itself. Calls to functions protected by the
     // {onlyGovernance} modifier needs to be whitelisted in this queue. Whitelisting is set in {_beforeExecute},
@@ -281,7 +282,7 @@ abstract contract L2Governor is Context, ERC165, EIP712, IGovernor, IERC721Recei
             deadline,
             description
         );
-
+        _proposerProposals[proposalId] = _msgSender();
         return proposalId;
     }
 
@@ -594,5 +595,15 @@ abstract contract L2Governor is Context, ERC165, EIP712, IGovernor, IERC721Recei
         bytes memory
     ) public virtual override returns (bytes4) {
         return this.onERC1155BatchReceived.selector;
+    }
+
+    function CLOCK_MODE() public override view returns (string memory) {
+        return "mode=blocknumber&from=default";
+    }
+    function clock() public override view returns (uint48) {
+        return uint48(block.number);
+    }
+    function proposalProposer(uint256 proposalId) public view override returns (address) {
+        return _proposerProposals[proposalId];
     }
 }
