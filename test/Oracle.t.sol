@@ -4,16 +4,15 @@ pragma solidity 0.8.13;
 import './BaseTest.sol';
 
 contract OracleTest is BaseTest {
-    VotingEscrow escrow;
 
     function deployBaseCoins() public {
+        deployProxyAdmin();
         deployOwners();
         deployCoins();
         mintStables();
         uint256[] memory amounts = new uint256[](1);
         amounts[0] = 1e25;
         mintVara(owners, amounts);
-        escrow = VotingEscrow(address(VARA));
     }
 
     function confirmTokensForFraxUsdc() public {

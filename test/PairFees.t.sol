@@ -5,6 +5,7 @@ import "./BaseTest.sol";
 
 contract PairFeesTest is BaseTest {
     function setUp() public {
+        deployProxyAdmin();
         deployOwners();
         deployCoins();
         mintStables();

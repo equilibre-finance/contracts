@@ -14,6 +14,7 @@ contract MinterTest is BaseTest {
     function deployBase() public {
         vm.warp(block.timestamp + 1 weeks); // put some initial time in
 
+        deployProxyAdmin();
         deployOwners();
         deployCoins();
         mintStables();
@@ -22,23 +23,52 @@ contract MinterTest is BaseTest {
         mintVara(owners, amounts);
 
         VeArtProxy artProxy = new VeArtProxy();
-        escrow = new VotingEscrow(address(VARA), address(artProxy));
-        factory = new PairFactory();
-        router = new Router(address(factory), address(owner));
-        gaugeFactory = new GaugeFactory();
-        bribeFactory = new BribeFactory();
-        voter = new Voter(address(escrow), address(factory), address(gaugeFactory), address(bribeFactory));
+
+        VotingEscrow implEscrow = new VotingEscrow();
+        proxy = new TransparentUpgradeableProxy(address(implEscrow), address(admin), abi.encodeWithSelector(VotingEscrow.initialize.selector, address(VARA), address(artProxy)));
+        escrow = VotingEscrow(address(proxy));
+
+        Pair implPair = new Pair();
+        PairFactory implPairFactory = new PairFactory();
+        proxy = new TransparentUpgradeableProxy(address(implPairFactory), address(admin), abi.encodeWithSelector(PairFactory.initialize.selector, address(implPair)));
+        factory = PairFactory(address(proxy));
+
+        Router implRouter = new Router();
+        proxy = new TransparentUpgradeableProxy(address(implRouter), address(admin), abi.encodeWithSelector(Router.initialize.selector, address(factory), address(owner)));
+        router = Router(payable(address(proxy)));
+        
+        Gauge implGauge = new Gauge();
+        GaugeFactory implGaugeFactory = new GaugeFactory();
+        proxy = new TransparentUpgradeableProxy(address(implGaugeFactory), address(admin), abi.encodeWithSelector(GaugeFactory.initialize.selector, address(implGauge)));
+        gaugeFactory = GaugeFactory(address(proxy));
+
+        InternalBribe implInternalBribe = new InternalBribe();
+        ExternalBribe implExternalBribe = new ExternalBribe();
+        BribeFactory implBribeFactory = new BribeFactory();
+        proxy = new TransparentUpgradeableProxy(address(implBribeFactory), address(admin), abi.encodeWithSelector(BribeFactory.initialize.selector, address(implInternalBribe), address(implExternalBribe)));
+        bribeFactory = BribeFactory(address(proxy));
+
+        Voter implVoter = new Voter();
+        proxy = new TransparentUpgradeableProxy(address(implVoter), address(admin), abi.encodeWithSelector(Voter.initialize.selector, address(escrow), address(factory), address(gaugeFactory), address(bribeFactory)));
+        voter = Voter(address(proxy));
 
         address[] memory tokens = new address[](2);
         tokens[0] = address(FRAX);
         tokens[1] = address(VARA);
-        voter.initialize(tokens, address(owner));
+        voter.init(tokens, address(owner));
         VARA.approve(address(escrow), TOKEN_1);
         escrow.create_lock(TOKEN_1, 4 * 365 * 86400);
-        distributor = new RewardsDistributor(address(escrow));
+
+        RewardsDistributor implDistributor = new RewardsDistributor();
+        proxy = new TransparentUpgradeableProxy(address(implDistributor), address(admin), abi.encodeWithSelector(RewardsDistributor.initialize.selector, address(escrow)));
+        distributor = RewardsDistributor(address(proxy));
+
         escrow.setVoter(address(voter));
 
-        minter = new Minter(address(voter), address(escrow), address(distributor));
+        Minter implMinter = new Minter();
+        proxy = new TransparentUpgradeableProxy(address(implMinter), address(admin), abi.encodeWithSelector(Minter.initialize.selector, address(voter), address(escrow), address(distributor)));
+        minter = Minter(address(proxy));
+
         distributor.setDepositor(address(minter));
         VARA.setMinter(address(minter));
 
@@ -68,7 +98,7 @@ contract MinterTest is BaseTest {
         claimants[0] = address(owner);
         uint256[] memory amounts = new uint256[](1);
         amounts[0] = TOKEN_1M;
-        minter.initialize(claimants, amounts, 2e25);
+        minter.init(claimants, amounts, 2e25);
         assertEq(escrow.ownerOf(2), address(owner));
         assertEq(escrow.ownerOf(3), address(0));
         vm.roll(block.number + 1);

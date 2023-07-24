@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.13;
 
+import '@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol';
 import 'contracts/libraries/Math.sol';
 import 'contracts/interfaces/IBribe.sol';
 import 'contracts/interfaces/IERC20.sol';
@@ -10,13 +11,13 @@ import 'contracts/interfaces/IVoter.sol';
 import 'contracts/interfaces/IVotingEscrow.sol';
 
 // Gauges are used to incentivize pools, they emit reward tokens over 7 days for staked LP tokens
-contract Gauge is IGauge {
+contract Gauge is Initializable, IGauge {
 
-    address public immutable stake; // the LP token that needs to be staked for rewards
-    address public immutable _ve; // the ve token used for gauges
-    address public immutable internal_bribe;
-    address public immutable external_bribe;
-    address public immutable voter;
+    address public stake; // the LP token that needs to be staked for rewards
+    address public _ve; // the ve token used for gauges
+    address public internal_bribe;
+    address public external_bribe;
+    address public voter;
 
     uint public derivedSupply;
     mapping(address => uint) public derivedBalances;
@@ -37,6 +38,8 @@ contract Gauge is IGauge {
     mapping(address => mapping(address => uint)) public userRewardPerTokenStored;
 
     mapping(address => uint) public tokenIds;
+
+    uint internal _unlocked;
 
     uint public totalSupply;
     mapping(address => uint) public balanceOf;
@@ -84,7 +87,9 @@ contract Gauge is IGauge {
     event ClaimFees(address indexed from, uint claimed0, uint claimed1);
     event ClaimRewards(address indexed from, address indexed reward, uint amount);
 
-    constructor(address _stake, address _internal_bribe, address _external_bribe, address  __ve, address _voter, bool _forPair, address[] memory _allowedRewardTokens) {
+    function initialize(address _stake, address _internal_bribe, address _external_bribe, address  __ve, address _voter, bool _forPair, address[] memory _allowedRewardTokens) external initializer {
+        _unlocked = 1;
+        
         stake = _stake;
         internal_bribe = _internal_bribe;
         external_bribe = _external_bribe;
@@ -101,7 +106,6 @@ contract Gauge is IGauge {
     }
 
     // simple re-entrancy check
-    uint internal _unlocked = 1;
     modifier lock() {
         require(_unlocked == 1);
         _unlocked = 2;

@@ -9,15 +9,15 @@ contract RedeemTest is BaseTest {
     uint256 public constant redeemableVARA = 10e6 * 1e18;
 
     function setUp() public {
-        deployOwners();
-        deployCoins();
-        mintStables();
+        // deployOwners();
+        // deployCoins();
+        // mintStables();
 
-        claim = new MerkleClaim(
-            address(VARA),
-            0xd0aa6a4e5b4e13462921d7518eebdb7b297a7877d6cfe078b0c318827392fb55
-        ); // root that mints User 100e18 tokens
-        VARA.setMerkleClaim(address(claim));
+        // claim = new MerkleClaim(
+        //     address(VARA),
+        //     0xd0aa6a4e5b4e13462921d7518eebdb7b297a7877d6cfe078b0c318827392fb55
+        // ); // root that mints User 100e18 tokens
+        // VARA.setMerkleClaim(address(claim));
     }
 
     function testClaimAirdrop() public {

@@ -11,9 +11,16 @@ contract EquilibreTvlOracleTest is BaseTest {
     EquilibreTvlOracle oracle_vara;
     Pair poolVara;
     function setUp() public {
+        deployProxyAdmin();
         deployCoins();
-        factory = new PairFactory();
-        router2 = new Router2(address(factory), address(WETH));
+        Pair implPair = new Pair();
+        PairFactory implPairFactory = new PairFactory();
+        proxy = new TransparentUpgradeableProxy(address(implPairFactory), address(admin), abi.encodeWithSelector(PairFactory.initialize.selector, address(implPair)));
+        factory = PairFactory(address(proxy));
+
+        Router2 implRouter2 = new Router2();
+        proxy = new TransparentUpgradeableProxy(address(implRouter2), address(admin), abi.encodeWithSelector(Router.initialize.selector, address(factory), address(WETH)));
+        router2 = Router2(payable(address(proxy)));
 
         // weth/usdc
         USDC.mint(address(this), TOKEN_100e6);
