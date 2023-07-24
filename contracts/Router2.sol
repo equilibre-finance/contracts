@@ -12,13 +12,9 @@ import 'contracts/interfaces/IWETH.sol';
 import 'contracts/Router.sol';
 import 'contracts/interfaces/IBaseV1Pair.sol';
 
-contract Router2 is Initializable, Router {
+contract Router2 is Router {
     using Math for uint;
     using SafeERC20Upgradeable for IERC20;
-
-    function initialize(address _factory, address _weth) external initializer {
-        __Router_init(_factory, _weth);
-    }
 
     // **** REMOVE LIQUIDITY (supporting fee-on-transfer tokens)****
     function removeLiquidityETHSupportingFeeOnTransferTokens(

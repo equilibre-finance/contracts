@@ -7,6 +7,7 @@ contract VotingEscrowTest is BaseTest {
     VotingEscrow escrow;
 
     function setUp() public {
+        deployProxyAdmin();
         deployOwners();
         deployCoins();
         mintStables();
@@ -15,7 +16,9 @@ contract VotingEscrowTest is BaseTest {
         mintVara(owners, amounts);
 
         VeArtProxy artProxy = new VeArtProxy();
-        escrow = new VotingEscrow(address(VARA), address(artProxy));
+        VotingEscrow implEscrow = new VotingEscrow();
+        proxy = new TransparentUpgradeableProxy(address(implEscrow), address(admin), abi.encodeWithSelector(VotingEscrow.initialize.selector, address(VARA), address(artProxy)));
+        escrow = VotingEscrow(address(proxy));
     }
 
     function testCreateLock() public {

@@ -19,8 +19,8 @@ contract GaugeFactory is OwnableUpgradeable, IGaugeFactory {
     }
 
     function createGauge(address _pool, address _internal_bribe, address _external_bribe, address _ve, bool isPair, address[] memory allowedRewards) external returns (address) {
-        BeaconProxy last_gauge = address(new BeaconProxy(address(beacon), 
-            abi.encodeWithSelector(Gauge(address(0)).initialize.selector, _pool, _internal_bribe, _external_bribe, _ve, msg.sender, isPair, allowedRewards)
+        last_gauge = address(new BeaconProxy(address(beacon), 
+            abi.encodeWithSelector(Gauge.initialize.selector, _pool, _internal_bribe, _external_bribe, _ve, msg.sender, isPair, allowedRewards)
         ));
         return last_gauge;
     }

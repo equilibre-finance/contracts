@@ -20,7 +20,7 @@ contract Minter is Initializable, IMinter {
     IVoter public _voter;
     IVotingEscrow public _ve;
     IRewardsDistributor public _rewards_distributor;
-    uint public weekly = 1_838_000 * 1e18; // represents a starting weekly emission of 1.838M VARA (VARA has 18 decimals)
+    uint public weekly; // represents a starting weekly emission of 1.838M VARA (VARA has 18 decimals)
     uint public active_period;
     uint internal constant LOCK = 86400 * 7 * 52 * 4;
 
@@ -40,6 +40,7 @@ contract Minter is Initializable, IMinter {
         initer = msg.sender;
         team = msg.sender;
         teamRate = 60; // 60 bps = 0.06%
+        weekly = 1_838_000 * 1e18;
         _vara = IVara(IVotingEscrow(__ve).token());
         _voter = IVoter(__voter);
         _ve = IVotingEscrow(__ve);

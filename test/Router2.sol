@@ -13,6 +13,7 @@ contract NativeTokenTest is BaseTest {
     }
 
     function deployPair() public {
+        deployProxyAdmin();
         deployOwners();
         deployCoins();
         mintStables();

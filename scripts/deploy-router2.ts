@@ -15,7 +15,7 @@ async function main() {
     ]);
 
     const pairFactory = '0x3ca3dA6092C2dd7347638690423f867b8aED1e65';
-    const router = await Router2.deploy(pairFactory, CONFIG.WETH);
+    const router = await hre.upgrades.deployProxy(Router2, [pairFactory, CONFIG.WETH]);
     await router.deployed();
     console.log('Router2', router.address);
     /*
