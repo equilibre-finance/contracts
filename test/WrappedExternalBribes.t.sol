@@ -20,6 +20,7 @@ contract WrappedExternalBribesTest is BaseTest {
     function setUp() public {
         vm.warp(block.timestamp + 1 weeks); // put some initial time in
 
+        deployProxyAdmin();
         deployOwners();
         deployCoins();
         mintStables();
@@ -30,21 +31,44 @@ contract WrappedExternalBribesTest is BaseTest {
         mintVara(owners, amounts);
         mintLR(owners, amounts);
         VeArtProxy artProxy = new VeArtProxy();
-        escrow = new VotingEscrow(address(VARA), address(artProxy));
+        VotingEscrow implEscrow = new VotingEscrow();
+        proxy = new TransparentUpgradeableProxy(address(implEscrow), address(admin), abi.encodeWithSelector(VotingEscrow.initialize.selector, address(VARA), address(artProxy)));
+        escrow = VotingEscrow(address(proxy));
+
         deployPairFactoryAndRouter();
         deployPairWithOwner(address(owner));
 
         // deployVoter()
-        gaugeFactory = new GaugeFactory();
-        bribeFactory = new BribeFactory();
-        voter = new Voter(address(escrow), address(factory), address(gaugeFactory), address(bribeFactory));
-        wxbribeFactory = new WrappedExternalBribeFactory(address(voter));
+        Gauge implGauge = new Gauge();
+        GaugeFactory implGaugeFactory = new GaugeFactory();
+        proxy = new TransparentUpgradeableProxy(address(implGaugeFactory), address(admin), abi.encodeWithSelector(GaugeFactory.initialize.selector, address(implGauge)));
+        gaugeFactory = GaugeFactory(address(proxy));
+
+        InternalBribe implInternalBribe = new InternalBribe();
+        ExternalBribe implExternalBribe = new ExternalBribe();
+        BribeFactory implBribeFactory = new BribeFactory();
+        proxy = new TransparentUpgradeableProxy(address(implBribeFactory), address(admin), abi.encodeWithSelector(BribeFactory.initialize.selector, address(implInternalBribe), address(implExternalBribe)));
+        bribeFactory = BribeFactory(address(proxy));
+
+        Voter implVoter = new Voter();
+        proxy = new TransparentUpgradeableProxy(address(implVoter), address(admin), abi.encodeWithSelector(Voter.initialize.selector, address(escrow), address(factory), address(gaugeFactory), address(bribeFactory)));
+        voter = Voter(address(proxy));
+
+        WrappedExternalBribeFactory implWxbribeFactory = new WrappedExternalBribeFactory();
+        proxy = new TransparentUpgradeableProxy(address(implWxbribeFactory), address(admin), abi.encodeWithSelector(WrappedExternalBribeFactory.initialize.selector, address(voter)));
+        wxbribeFactory = WrappedExternalBribeFactory(address(proxy));
 
         escrow.setVoter(address(voter));
 
         // deployMinter()
-        distributor = new RewardsDistributor(address(escrow));
-        minter = new Minter(address(voter), address(escrow), address(distributor));
+        RewardsDistributor implDistributor = new RewardsDistributor();
+        proxy = new TransparentUpgradeableProxy(address(implDistributor), address(admin), abi.encodeWithSelector(RewardsDistributor.initialize.selector, address(escrow)));
+        distributor = RewardsDistributor(address(proxy));
+
+        Minter implMinter = new Minter();
+        proxy = new TransparentUpgradeableProxy(address(implMinter), address(admin), abi.encodeWithSelector(Minter.initialize.selector, address(voter), address(escrow), address(distributor)));
+        minter = Minter(address(proxy));
+
         distributor.setDepositor(address(minter));
         VARA.setMinter(address(minter));
         address[] memory tokens = new address[](5);
@@ -53,11 +77,11 @@ contract WrappedExternalBribesTest is BaseTest {
         tokens[2] = address(DAI);
         tokens[3] = address(VARA);
         tokens[4] = address(LR);
-        voter.initialize(tokens, address(minter));
+        voter.init(tokens, address(minter));
 
         address[] memory claimants = new address[](0);
         uint[] memory amounts1 = new uint[](0);
-        minter.initialize(claimants, amounts1, 0);
+        minter.init(claimants, amounts1, 0);
 
         // USDC - FRAX stable
         gauge = Gauge(voter.createGauge(address(pair)));

@@ -2,6 +2,7 @@
 
 pragma solidity 0.8.13;
 
+import '@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol';
 import 'contracts/libraries/Math.sol';
 import 'contracts/interfaces/IERC20.sol';
 import 'contracts/interfaces/IPair.sol';
@@ -9,7 +10,7 @@ import 'contracts/interfaces/IPairFactory.sol';
 import 'contracts/interfaces/IRouter.sol';
 import 'contracts/interfaces/IWETH.sol';
 
-contract Router is IRouter {
+contract Router is Initializable, IRouter {
 
     struct route {
         address from;
@@ -17,21 +18,39 @@ contract Router is IRouter {
         bool stable;
     }
 
-    address public immutable factory;
-    IWETH public immutable weth;
+    address public factory;
+    IWETH public weth;
     uint internal constant MINIMUM_LIQUIDITY = 10**3;
-    bytes32 immutable pairCodeHash;
+    bytes32 pairCodeHash;
 
     modifier ensure(uint deadline) {
         require(deadline >= block.timestamp, 'Router: EXPIRED');
         _;
     }
 
-    constructor(address _factory, address _weth) {
+    function initialize(
+        address _factory, 
+        address _weth
+    ) external initializer {
+        __Router_init(_factory, _weth);
+    }
+
+    function __Router_init(
+        address _factory, 
+        address _weth
+    ) internal onlyInitializing {
+        __Router_init_unchained(_factory, _weth);
+    }
+
+    function __Router_init_unchained(
+        address _factory, 
+        address _weth
+    ) internal onlyInitializing {
         factory = _factory;
         pairCodeHash = IPairFactory(_factory).pairCodeHash();
         weth = IWETH(_weth);
     }
+
 
     receive() external payable {
         assert(msg.sender == address(weth)); // only accept ETH via fallback from the WETH contract

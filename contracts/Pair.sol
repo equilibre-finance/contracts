@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.13;
 
+import '@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol';
 import 'contracts/libraries/Math.sol';
 import 'contracts/interfaces/IERC20.sol';
 import 'contracts/interfaces/IPair.sol';
@@ -9,14 +10,14 @@ import 'contracts/factories/PairFactory.sol';
 import 'contracts/PairFees.sol';
 
 // The base pair of pools, either stable or volatile
-contract Pair is IPair {
+contract Pair is Initializable, IPair {
 
     string public name;
     string public symbol;
     uint8 public constant decimals = 18;
 
     // Used to denote stable or volatile pair, not immutable since construction happens in the initialize method for CREATE2 deterministic addresses
-    bool public immutable stable;
+    bool public stable;
 
     uint public totalSupply = 0;
 
@@ -29,11 +30,12 @@ contract Pair is IPair {
     mapping(address => uint) public nonces;
 
     uint internal constant MINIMUM_LIQUIDITY = 10**3;
+    uint internal _unlocked;
 
-    address public immutable token0;
-    address public immutable token1;
-    address public immutable fees;
-    address immutable factory;
+    address public token0;
+    address public token1;
+    address public fees;
+    address factory;
 
     // Structure to capture time period obervations every 30 minutes, used for local oracles
     struct Observation {
@@ -47,8 +49,8 @@ contract Pair is IPair {
 
     Observation[] public observations;
 
-    uint internal immutable decimals0;
-    uint internal immutable decimals1;
+    uint internal decimals0;
+    uint internal decimals1;
 
     uint public reserve0;
     uint public reserve1;
@@ -59,8 +61,8 @@ contract Pair is IPair {
 
     // index0 and index1 are used to accumulate fees, this is split out from normal trades to keep the swap "clean"
     // this further allows LP holders to easily claim fees for tokens they have/staked
-    uint public index0 = 0;
-    uint public index1 = 0;
+    uint public index0;
+    uint public index1;
 
     // position assigned to each LP to track their current index0 & index1 vs the global position
     mapping(address => uint) public supplyIndex0;
@@ -87,7 +89,11 @@ contract Pair is IPair {
     event Transfer(address indexed from, address indexed to, uint amount);
     event Approval(address indexed owner, address indexed spender, uint amount);
 
-    constructor() {
+    function initialize() external initializer {
+        _unlocked = 1;
+        index0 = 0;
+        index1 = 0;
+
         factory = msg.sender;
         (address _token0, address _token1, bool _stable) = PairFactory(msg.sender).getInitializable();
         (token0, token1, stable) = (_token0, _token1, _stable);
@@ -107,7 +113,7 @@ contract Pair is IPair {
     }
 
     // simple re-entrancy check
-    uint internal _unlocked = 1;
+    
     modifier lock() {
         require(_unlocked == 1);
         _unlocked = 2;

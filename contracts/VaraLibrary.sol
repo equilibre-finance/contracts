@@ -2,13 +2,14 @@
 
 pragma solidity 0.8.13;
 
+import '@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol';
 import "contracts/interfaces/IPair.sol";
 import "contracts/interfaces/IRouter.sol";
 
-contract VaraLibrary {
-    IRouter internal immutable router;
+contract VaraLibrary is Initializable {
+    IRouter internal router;
 
-    constructor(address _router) {
+    function initialize(address _router) external initializer {
         router = IRouter(_router);
     }
 

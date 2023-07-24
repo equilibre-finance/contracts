@@ -3,6 +3,7 @@
 
 pragma solidity ^0.8.0;
 
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {L2GovernorVotes} from "contracts/governance/L2GovernorVotes.sol";
 
 /**
@@ -13,7 +14,7 @@ import {L2GovernorVotes} from "contracts/governance/L2GovernorVotes.sol";
  *
  * _Available since v4.3._
  */
-abstract contract L2GovernorVotesQuorumFraction is L2GovernorVotes {
+abstract contract L2GovernorVotesQuorumFraction is Initializable, L2GovernorVotes {
     uint256 private _quorumNumerator;
 
     event QuorumNumeratorUpdated(uint256 oldQuorumNumerator, uint256 newQuorumNumerator);
@@ -25,10 +26,14 @@ abstract contract L2GovernorVotesQuorumFraction is L2GovernorVotes {
      * specified as a percent: a numerator of 10 corresponds to quorum being 10% of total supply. The denominator can be
      * customized by overriding {quorumDenominator}.
      */
-    constructor(uint256 quorumNumeratorValue) {
-        _updateQuorumNumerator(quorumNumeratorValue);
+    function __L2GovernorVotesQuorumFraction_init(uint256 quorumNumeratorValue) internal onlyInitializing {
+        __L2GovernorVotesQuorumFraction_init_unchained(quorumNumeratorValue);
     }
 
+    function __L2GovernorVotesQuorumFraction_init_unchained(uint256 quorumNumeratorValue) internal onlyInitializing {
+        _updateQuorumNumerator(quorumNumeratorValue);
+    }
+    
     /**
      * @dev Returns the current quorum numerator. See {quorumDenominator}.
      */
