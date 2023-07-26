@@ -5,7 +5,7 @@ import 'contracts/libraries/Math.sol';
 import 'contracts/interfaces/IBribe.sol';
 import 'contracts/interfaces/IERC20.sol';
 import 'contracts/interfaces/IGauge.sol';
-import 'contracts/interfaces/IPair.sol';
+import 'contracts/interfaces/IFeeVault.sol';
 import 'contracts/interfaces/IVoter.sol';
 import 'contracts/interfaces/IVotingEscrow.sol';
 
@@ -117,11 +117,11 @@ contract Gauge is IGauge {
         if (!isForPair) {
             return (0, 0);
         }
-        (claimed0, claimed1) = IPair(stake).claimFees();
+        (claimed0, claimed1) = IFeeVault(stake).claimFees();
         if (claimed0 > 0 || claimed1 > 0) {
             uint _fees0 = fees0 + claimed0;
             uint _fees1 = fees1 + claimed1;
-            (address _token0, address _token1) = IPair(stake).tokens();
+            (address _token0, address _token1) = IFeeVault(stake).tokens();
             if (_fees0 > IBribe(internal_bribe).left(_token0) && _fees0 / DURATION > 0) {
                 fees0 = 0;
                 _safeApprove(_token0, internal_bribe, _fees0);
