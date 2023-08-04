@@ -1,7 +1,7 @@
 // 1:1 with Hardhat test
 pragma solidity 0.8.13;
 
-import './BaseTest.sol';
+import "./BaseTest.sol";
 
 contract PairTest is BaseTest {
     VotingEscrow escrow;
@@ -51,7 +51,7 @@ contract PairTest is BaseTest {
 
         VARA.approve(address(escrow), 5e17);
         escrow.increase_amount(1, 5e17);
-        vm.expectRevert(abi.encodePacked('Can only increase lock duration'));
+        vm.expectRevert(abi.encodePacked("Can only increase lock duration"));
         escrow.increase_unlock_time(1, 4 * 365 * 86400);
         assertGt(escrow.balanceOfNFT(1), 995063075414519385);
         assertEq(VARA.balanceOf(address(escrow)), TOKEN_1);
@@ -71,11 +71,11 @@ contract PairTest is BaseTest {
     function stealNFT() public {
         votingEscrowViews();
 
-        vm.expectRevert(abi.encodePacked(''));
+        vm.expectRevert(abi.encodePacked(""));
         owner2.transferFrom(address(escrow), address(owner), address(owner2), 1);
-        vm.expectRevert(abi.encodePacked(''));
+        vm.expectRevert(abi.encodePacked(""));
         owner2.approveEscrow(address(escrow), address(owner2), 1);
-        vm.expectRevert(abi.encodePacked(''));
+        vm.expectRevert(abi.encodePacked(""));
         owner2.merge(address(escrow), 1, 2);
     }
 
@@ -158,13 +158,43 @@ contract PairTest is BaseTest {
 
         USDC.approve(address(router), USDC_100K);
         FRAX.approve(address(router), TOKEN_100K);
-        router.addLiquidity(address(FRAX), address(USDC), true, TOKEN_100K, USDC_100K, TOKEN_100K, USDC_100K, address(owner), block.timestamp);
+        router.addLiquidity(
+            address(FRAX),
+            address(USDC),
+            true,
+            TOKEN_100K,
+            USDC_100K,
+            TOKEN_100K,
+            USDC_100K,
+            address(owner),
+            block.timestamp
+        );
         USDC.approve(address(router), USDC_100K);
         FRAX.approve(address(router), TOKEN_100K);
-        router.addLiquidity(address(FRAX), address(USDC), false, TOKEN_100K, USDC_100K, TOKEN_100K, USDC_100K, address(owner), block.timestamp);
+        router.addLiquidity(
+            address(FRAX),
+            address(USDC),
+            false,
+            TOKEN_100K,
+            USDC_100K,
+            TOKEN_100K,
+            USDC_100K,
+            address(owner),
+            block.timestamp
+        );
         DAI.approve(address(router), TOKEN_100M);
         FRAX.approve(address(router), TOKEN_100M);
-        router.addLiquidity(address(FRAX), address(DAI), true, TOKEN_100M, TOKEN_100M, 0, 0, address(owner), block.timestamp);
+        router.addLiquidity(
+            address(FRAX),
+            address(DAI),
+            true,
+            TOKEN_100M,
+            TOKEN_100M,
+            0,
+            0,
+            address(owner),
+            block.timestamp
+        );
     }
 
     function routerRemoveLiquidity() public {
@@ -181,13 +211,46 @@ contract PairTest is BaseTest {
 
         owner2.approve(address(USDC), address(router), USDC_100K);
         owner2.approve(address(FRAX), address(router), TOKEN_100K);
-        owner2.addLiquidity(payable(address(router)), address(FRAX), address(USDC), true, TOKEN_100K, USDC_100K, TOKEN_100K, USDC_100K, address(owner2), block.timestamp);
+        owner2.addLiquidity(
+            payable(address(router)),
+            address(FRAX),
+            address(USDC),
+            true,
+            TOKEN_100K,
+            USDC_100K,
+            TOKEN_100K,
+            USDC_100K,
+            address(owner2),
+            block.timestamp
+        );
         owner2.approve(address(USDC), address(router), USDC_100K);
         owner2.approve(address(FRAX), address(router), TOKEN_100K);
-        owner2.addLiquidity(payable(address(router)), address(FRAX), address(USDC), false, TOKEN_100K, USDC_100K, TOKEN_100K, USDC_100K, address(owner2), block.timestamp);
+        owner2.addLiquidity(
+            payable(address(router)),
+            address(FRAX),
+            address(USDC),
+            false,
+            TOKEN_100K,
+            USDC_100K,
+            TOKEN_100K,
+            USDC_100K,
+            address(owner2),
+            block.timestamp
+        );
         owner2.approve(address(DAI), address(router), TOKEN_100M);
         owner2.approve(address(FRAX), address(router), TOKEN_100M);
-        owner2.addLiquidity(payable(address(router)), address(FRAX), address(DAI), true, TOKEN_100M, TOKEN_100M, 0, 0, address(owner2), block.timestamp);
+        owner2.addLiquidity(
+            payable(address(router)),
+            address(FRAX),
+            address(DAI),
+            true,
+            TOKEN_100M,
+            TOKEN_100M,
+            0,
+            0,
+            address(owner2),
+            block.timestamp
+        );
     }
 
     function routerPair1GetAmountsOutAndSwapExactTokensForTokens() public {
@@ -220,7 +283,14 @@ contract PairTest is BaseTest {
 
         uint256[] memory expectedOutput = router.getAmountsOut(USDC_1, routes);
         owner2.approve(address(USDC), address(router), USDC_1);
-        owner2.swapExactTokensForTokens(payable(address(router)), USDC_1, expectedOutput[1], routes, address(owner2), block.timestamp);
+        owner2.swapExactTokensForTokens(
+            payable(address(router)),
+            USDC_1,
+            expectedOutput[1],
+            routes,
+            address(owner2),
+            block.timestamp
+        );
         address fees = pair.fees();
         assertEq(USDC.balanceOf(fees), 101);
         uint256 b = USDC.balanceOf(address(owner));
@@ -322,7 +392,7 @@ contract PairTest is BaseTest {
         gauge2.deposit(PAIR_1, 0);
         gauge3.deposit(PAIR_1, 0);
         assertEq(gauge.totalSupply(), PAIR_1);
-        assertEq(gauge.earned(address(escrow), address(owner)), 0);
+        assertEq(gauge.earned(address(escrow), 0), 0);
     }
 
     function votingEscrowGaugeManipulate() public {
@@ -333,10 +403,10 @@ contract PairTest is BaseTest {
         gauge.deposit(PAIR_1, 1);
         assertEq(gauge.tokenIds(address(owner)), 1);
         pair.approve(address(gauge), PAIR_1);
-        vm.expectRevert(abi.encodePacked(''));
+        vm.expectRevert(abi.encodePacked(""));
         gauge.deposit(PAIR_1, 2);
         assertEq(gauge.tokenIds(address(owner)), 1);
-        vm.expectRevert(abi.encodePacked(''));
+        vm.expectRevert(abi.encodePacked(""));
         gauge.withdrawToken(0, 2);
         assertEq(gauge.tokenIds(address(owner)), 1);
         gauge.withdrawToken(0, 1);
@@ -351,18 +421,18 @@ contract PairTest is BaseTest {
         owner2.deposit(address(gauge), PAIR_1, 0);
         owner2.stakeStake(address(staking), PAIR_1);
         assertEq(gauge.totalSupply(), 3 * PAIR_1);
-        assertEq(gauge.earned(address(escrow), address(owner2)), 0);
+        assertEq(gauge.earned(address(escrow), 0), 0);
     }
 
     function withdrawGaugeStake() public {
         deployPairFactoryGaugeOwner2();
 
-        gauge.withdraw(gauge.balanceOf(address(owner)));
-        owner2.withdrawGauge(address(gauge), gauge.balanceOf(address(owner2)));
+        gauge.withdraw(gauge.balance(0));
+        owner2.withdrawGauge(address(gauge), gauge.balance(0));
         staking.withdraw(staking._balances(address(owner)));
         owner2.withdrawStake(address(staking), staking._balances(address(owner2)));
-        gauge2.withdraw(gauge2.balanceOf(address(owner)));
-        gauge3.withdraw(gauge3.balanceOf(address(owner)));
+        gauge2.withdraw(gauge2.balance(0));
+        gauge3.withdraw(gauge3.balance(0));
         assertEq(gauge.totalSupply(), 0);
         assertEq(gauge2.totalSupply(), 0);
         assertEq(gauge3.totalSupply(), 0);
@@ -391,7 +461,7 @@ contract PairTest is BaseTest {
         uint256 supply = pair.balanceOf(address(owner));
         pair.approve(address(gauge), supply);
         gauge.deposit(supply, 1);
-        gauge.withdraw(gauge.balanceOf(address(owner)));
+        gauge.withdraw(gauge.balance(1));
         assertEq(gauge.totalSupply(), 0);
         pair.approve(address(gauge), supply);
         gauge.deposit(PAIR_1, 1);
@@ -631,7 +701,7 @@ contract PairTest is BaseTest {
 
         assertEq(address(owner), escrow.ownerOf(1));
         assertTrue(escrow.isApprovedOrOwner(address(owner), 1));
-        gauge.withdraw(gauge.balanceOf(address(owner)));
+        gauge.withdraw(gauge.balance(1));
         staking.withdraw(staking._balances(address(owner)));
         vm.warp(block.timestamp + 1);
         pair.approve(address(gauge), PAIR_1);
@@ -651,43 +721,43 @@ contract PairTest is BaseTest {
         vm.warp(block.timestamp + 1);
         gauge.batchRewardPerToken(address(VARA), 200);
         vm.warp(block.timestamp + 1);
-        uint256 earned = gauge.earned(address(VARA), address(owner));
+        uint256 earned = gauge.earned(address(VARA), 0);
         address[] memory rewards = new address[](1);
         rewards[0] = address(VARA);
         vm.warp(block.timestamp + 1);
-        gauge.getReward(address(owner), rewards);
+        gauge.getReward(0, rewards);
         vm.warp(block.timestamp + 1);
         uint256 after_ = VARA.balanceOf(address(owner));
         uint256 received = after_ - before;
 
-        gauge.withdraw(gauge.balanceOf(address(owner)));
+        gauge.withdraw(gauge.balance(0));
         pair.approve(address(gauge), PAIR_1);
         gauge.deposit(PAIR_1, 1);
-        gauge.getReward(address(owner), rewards);
-        gauge.withdraw(gauge.balanceOf(address(owner)));
+        gauge.getReward(1, rewards);
+        gauge.withdraw(gauge.balance(1));
         pair.approve(address(gauge), PAIR_1);
         gauge.deposit(PAIR_1, 0);
-        gauge.getReward(address(owner), rewards);
-        gauge.withdraw(gauge.balanceOf(address(owner)));
+        gauge.getReward(0, rewards);
+        gauge.withdraw(gauge.balance(0));
         pair.approve(address(gauge), PAIR_1);
         gauge.deposit(PAIR_1, 1);
-        gauge.getReward(address(owner), rewards);
-        gauge.withdraw(gauge.balanceOf(address(owner)));
+        gauge.getReward(1, rewards);
+        gauge.withdraw(gauge.balance(1));
         pair.approve(address(gauge), PAIR_1);
         gauge.deposit(PAIR_1, 0);
-        gauge.getReward(address(owner), rewards);
-        gauge.withdraw(gauge.balanceOf(address(owner)));
+        gauge.getReward(0, rewards);
+        gauge.withdraw(gauge.balance(0));
         pair.approve(address(gauge), PAIR_1);
         gauge.deposit(PAIR_1, 1);
-        gauge.getReward(address(owner), rewards);
-        gauge.withdraw(gauge.balanceOf(address(owner)));
+        gauge.getReward(1, rewards);
+        gauge.withdraw(gauge.balance(1));
         pair.approve(address(gauge), PAIR_1);
         gauge.deposit(PAIR_1, 0);
-        gauge.getReward(address(owner), rewards);
+        gauge.getReward(0, rewards);
         vm.warp(block.timestamp + 604800);
         vm.roll(block.number + 1);
-        gauge.getReward(address(owner), rewards);
-        gauge.withdraw(gauge.balanceOf(address(owner)));
+        gauge.getReward(0, rewards);
+        gauge.withdraw(gauge.balance(0));
     }
 
     function gaugeClaimRewardsAfterExpiry() public {
@@ -697,35 +767,35 @@ contract PairTest is BaseTest {
         rewards[0] = address(VARA);
         pair.approve(address(gauge), PAIR_1);
         gauge.deposit(PAIR_1, 1);
-        gauge.getReward(address(owner), rewards);
-        gauge.withdraw(gauge.balanceOf(address(owner)));
+        gauge.getReward(1, rewards);
+        gauge.withdraw(gauge.balance(1));
         pair.approve(address(gauge), PAIR_1);
         gauge.deposit(PAIR_1, 1);
-        gauge.getReward(address(owner), rewards);
-        gauge.withdraw(gauge.balanceOf(address(owner)));
+        gauge.getReward(1, rewards);
+        gauge.withdraw(gauge.balance(1));
         pair.approve(address(gauge), PAIR_1);
         gauge.deposit(PAIR_1, 1);
-        gauge.getReward(address(owner), rewards);
-        gauge.withdraw(gauge.balanceOf(address(owner)));
+        gauge.getReward(1, rewards);
+        gauge.withdraw(gauge.balance(1));
         pair.approve(address(gauge), PAIR_1);
         gauge.deposit(PAIR_1, 1);
-        gauge.getReward(address(owner), rewards);
-        gauge.withdraw(gauge.balanceOf(address(owner)));
+        gauge.getReward(1, rewards);
+        gauge.withdraw(gauge.balance(1));
         pair.approve(address(gauge), PAIR_1);
         gauge.deposit(PAIR_1, 1);
-        gauge.getReward(address(owner), rewards);
-        gauge.withdraw(gauge.balanceOf(address(owner)));
+        gauge.getReward(1, rewards);
+        gauge.withdraw(gauge.balance(1));
         pair.approve(address(gauge), PAIR_1);
         gauge.deposit(PAIR_1, 1);
-        gauge.getReward(address(owner), rewards);
-        gauge.withdraw(gauge.balanceOf(address(owner)));
+        gauge.getReward(1, rewards);
+        gauge.withdraw(gauge.balance(1));
         pair.approve(address(gauge), PAIR_1);
         gauge.deposit(PAIR_1, 1);
-        gauge.getReward(address(owner), rewards);
+        gauge.getReward(1, rewards);
         vm.warp(block.timestamp + 604800);
         vm.roll(block.number + 1);
-        gauge.getReward(address(owner), rewards);
-        gauge.withdraw(gauge.balanceOf(address(owner)));
+        gauge.getReward(1, rewards);
+        gauge.withdraw(gauge.balance(1));
     }
 
     function votingEscrowDecay() public {
@@ -741,7 +811,7 @@ contract PairTest is BaseTest {
         voter.claimFees(bribes_, rewards, 1);
         uint256 supply = escrow.totalSupply();
         assertGt(supply, 0);
-        vm.warp(block.timestamp + 4*365*86400);
+        vm.warp(block.timestamp + 4 * 365 * 86400);
         vm.roll(block.number + 1);
         assertEq(escrow.balanceOfNFT(1), 0);
         assertEq(escrow.totalSupply(), 0);
@@ -756,7 +826,18 @@ contract PairTest is BaseTest {
 
         owner3.approve(address(USDC), address(router), 1e12);
         owner3.approve(address(FRAX), address(router), TOKEN_1M);
-        owner3.addLiquidity(payable(address(router)), address(FRAX), address(USDC), true, TOKEN_1M, 1e12, 0, 0, address(owner3), block.timestamp);
+        owner3.addLiquidity(
+            payable(address(router)),
+            address(FRAX),
+            address(USDC),
+            true,
+            TOKEN_1M,
+            1e12,
+            0,
+            0,
+            address(owner3),
+            block.timestamp
+        );
     }
 
     function deployPairFactoryGaugeOwner3() public {
@@ -769,10 +850,10 @@ contract PairTest is BaseTest {
     function gaugeClaimRewardsOwner3() public {
         deployPairFactoryGaugeOwner3();
 
-        owner3.withdrawGauge(address(gauge), gauge.balanceOf(address(owner3)));
+        owner3.withdrawGauge(address(gauge), gauge.balance(0));
         owner3.approve(address(pair), address(gauge), PAIR_1);
         owner3.deposit(address(gauge), PAIR_1, 0);
-        owner3.withdrawGauge(address(gauge), gauge.balanceOf(address(owner3)));
+        owner3.withdrawGauge(address(gauge), gauge.balance(0));
         gauge.batchRewardPerToken(address(VARA), 200);
         owner3.approve(address(pair), address(gauge), PAIR_1);
         owner3.deposit(address(gauge), PAIR_1, 0);
@@ -784,11 +865,11 @@ contract PairTest is BaseTest {
         address[] memory rewards = new address[](1);
         rewards[0] = address(VARA);
         owner3.getGaugeReward(address(gauge), address(owner3), rewards);
-        owner3.withdrawGauge(address(gauge), gauge.balanceOf(address(owner3)));
+        owner3.withdrawGauge(address(gauge), gauge.balance(0));
         owner3.approve(address(pair), address(gauge), PAIR_1);
         owner3.deposit(address(gauge), PAIR_1, 0);
         owner3.getGaugeReward(address(gauge), address(owner3), rewards);
-        owner3.withdrawGauge(address(gauge), gauge.balanceOf(address(owner3)));
+        owner3.withdrawGauge(address(gauge), gauge.balance(0));
         owner3.approve(address(pair), address(gauge), PAIR_1);
         owner3.deposit(address(gauge), PAIR_1, 0);
         owner3.getGaugeReward(address(gauge), address(owner3), rewards);
@@ -796,7 +877,7 @@ contract PairTest is BaseTest {
         owner3.getGaugeReward(address(gauge), address(owner3), rewards);
         owner3.getGaugeReward(address(gauge), address(owner3), rewards);
 
-        owner3.withdrawGauge(address(gauge), gauge.balanceOf(address(owner)));
+        owner3.withdrawGauge(address(gauge), gauge.balance(0));
         owner3.approve(address(pair), address(gauge), PAIR_1);
         owner3.deposit(address(gauge), PAIR_1, 0);
         owner3.getGaugeReward(address(gauge), address(owner3), rewards);
@@ -828,7 +909,7 @@ contract PairTest is BaseTest {
     function gaugeClaimRewardsOwner3NextCycle() public {
         minterMint2();
 
-        owner3.withdrawGauge(address(gauge), gauge.balanceOf(address(owner3)));
+        owner3.withdrawGauge(address(gauge), gauge.balance(0));
         console2.log(gauge.rewardPerTokenStored(address(VARA)));
         owner3.approve(address(pair), address(gauge), PAIR_1);
         owner3.deposit(address(gauge), PAIR_1, 0);
@@ -843,7 +924,7 @@ contract PairTest is BaseTest {
         assertGt(received, 0);
         console2.log(gauge.rewardPerTokenStored(address(VARA)));
 
-        owner3.withdrawGauge(address(gauge), gauge.balanceOf(address(owner)));
+        owner3.withdrawGauge(address(gauge), gauge.balance(0));
         owner3.approve(address(pair), address(gauge), PAIR_1);
         owner3.deposit(address(gauge), PAIR_1, 0);
         owner3.getGaugeReward(address(gauge), address(owner3), rewards);
@@ -859,15 +940,15 @@ contract PairTest is BaseTest {
 
         vm.warp(block.timestamp + 604800);
         vm.roll(block.number + 1);
-        uint256 reward1 = gauge.earned(address(LR), address(owner));
-        uint256 reward3 = gauge.earned(address(LR), address(owner3));
+        uint256 reward1 = gauge.earned(address(LR), 0);
+        uint256 reward3 = gauge.earned(address(LR), 0);
         assertLt(2e25 - (reward1 + reward3), 1e5);
         address[] memory rewards = new address[](1);
         rewards[0] = address(LR);
-        gauge.getReward(address(owner), rewards);
+        gauge.getReward(0, rewards);
         owner2.getGaugeReward(address(gauge), address(owner2), rewards);
         owner3.getGaugeReward(address(gauge), address(owner3), rewards);
-        gauge.withdraw(gauge.balanceOf(address(owner)));
+        gauge.withdraw(gauge.balance(0));
     }
 
     function testGaugeClaimRewards3() public {
@@ -882,7 +963,7 @@ contract PairTest is BaseTest {
         vm.roll(block.number + 1);
         address[] memory rewards = new address[](1);
         rewards[0] = address(LR);
-        gauge.getReward(address(owner), rewards);
-        gauge.withdraw(gauge.balanceOf(address(owner)));
+        gauge.getReward(0, rewards);
+        gauge.withdraw(gauge.balance(0));
     }
 }

@@ -70,8 +70,8 @@ contract LPRewardsTest is BaseTest {
         rewards[0] = address(VARA);
 
         // check derived balance is the same
-        assertEq(gauge.derivedBalance(address(owner)), gauge.derivedBalance(address(owner2)));
+        assertEq(gauge.derivedBalance(0), gauge.derivedBalance(1));
         // check that derived balance is 100% of balance
-        assertEq(gauge.derivedBalance(address(owner)), PAIR_1);
+        assertEq(gauge.derivedBalance(0), PAIR_1);
     }
 }
