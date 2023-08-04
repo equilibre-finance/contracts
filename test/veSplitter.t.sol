@@ -52,6 +52,7 @@ contract veSplitterTest is Test {
 
     veSplitter main;
     uint tokenId;
+
     function setUp() public {
         vara = new Vara();
         gaugeFactory = new GaugeFactory();
@@ -76,7 +77,6 @@ contract veSplitterTest is Test {
         distributor.setDepositor(address(minter));
         governor.setTeam(address(this));
 
-
         whitelist.push(address(vara));
         whitelist.push(address(DAI));
         voter.initialize(whitelist, address(minter));
@@ -88,8 +88,8 @@ contract veSplitterTest is Test {
         DAI.approve(address(router), TOKEN_100);
         vara.approve(address(router), TOKEN_100);
 
-        router.addLiquidityETH{value : TOKEN_100}(address(DAI), false, TOKEN_100, 0, 0, address(this), block.timestamp);
-        router.addLiquidityETH{value : TOKEN_100}(address(vara), false, TOKEN_100, 0, 0, address(this), block.timestamp);
+        router.addLiquidityETH{value: TOKEN_100}(address(DAI), false, TOKEN_100, 0, 0, address(this), block.timestamp);
+        router.addLiquidityETH{value: TOKEN_100}(address(vara), false, TOKEN_100, 0, 0, address(this), block.timestamp);
 
         pool_eth_dai = Pair(pairFactory.getPair(address(WETH), address(DAI), false));
         pool_eth_vara = Pair(pairFactory.getPair(address(WETH), address(vara), false));
@@ -100,8 +100,7 @@ contract veSplitterTest is Test {
         emptyAmounts[0] = 1e18;
         minter.initialize(emptyAddresses, emptyAmounts, 1e18);
 
-        main = new veSplitter( address(voter) );
-
+        main = new veSplitter(address(voter));
     }
 
     function runEpochs() public {
@@ -154,7 +153,7 @@ contract veSplitterTest is Test {
         main.split(amounts, locks, tokenId);
 
         voter.reset(tokenId);
-        gauge_eth_vara.withdrawAll();
+        // gauge_eth_vara.withdrawAll();
 
         vm.expectRevert(abi.encodePacked(veSplitter.NftNotApproved.selector));
         main.split(amounts, locks, tokenId);
@@ -180,11 +179,9 @@ contract veSplitterTest is Test {
         main.split(amounts, locks, tokenId);
 
         uint balanceOfNft = escrow.balanceOf(address(this));
-        assert( balanceOfNft == 3 );
+        assert(balanceOfNft == 3);
         uint balanceOfTokenAfter = vara.balanceOf(address(this));
         uint tokensReceived = balanceOfTokenAfter - balanceOfTokenBefore;
-        assert( tokensReceived == 39999897000000000000000000);
-
+        assert(tokensReceived == 39999897000000000000000000);
     }
-
 }

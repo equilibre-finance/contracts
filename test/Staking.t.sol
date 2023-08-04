@@ -1,7 +1,7 @@
 // 1:1 with Hardhat test
 pragma solidity 0.8.13;
 
-import './BaseTest.sol';
+import "./BaseTest.sol";
 
 contract StakingTest is BaseTest {
     GaugeFactory gaugeFactory;
@@ -52,7 +52,14 @@ contract StakingTest is BaseTest {
         gaugeFactory = new GaugeFactory();
         address[] memory allowedRewards = new address[](1);
         vm.prank(address(voter));
-        gaugeFactory.createGauge(address(stake), address(owner), address(owner), address(escrow), false, allowedRewards);
+        gaugeFactory.createGauge(
+            address(stake),
+            address(owner),
+            address(owner),
+            address(escrow),
+            false,
+            allowedRewards
+        );
         address gaugeAddr = gaugeFactory.last_gauge();
         gauge = Gauge(gaugeAddr);
 
@@ -67,7 +74,7 @@ contract StakingTest is BaseTest {
         staking.stake(1e21);
         gauge.deposit(1e21, 1);
 
-        assertEq(gauge.earned(address(VARA), address(owner)), staking.earned(address(owner)));
+        assertEq(gauge.earned(address(VARA), 1), staking.earned(address(owner)));
     }
 
     function depositEmpty2() public {
@@ -78,7 +85,7 @@ contract StakingTest is BaseTest {
         owner2.stakeStake(address(staking), 1e21);
         owner2.deposit(address(gauge), 1e21, 2);
 
-        assertEq(gauge.earned(address(VARA), address(owner2)), staking.earned(address(owner2)));
+        assertEq(gauge.earned(address(VARA), 2), staking.earned(address(owner2)));
     }
 
     function depositEmpty3() public {
@@ -89,7 +96,7 @@ contract StakingTest is BaseTest {
         owner3.stakeStake(address(staking), 1e21);
         owner3.deposit(address(gauge), 1e21, 3);
 
-        assertEq(gauge.earned(address(VARA), address(owner3)), staking.earned(address(owner3)));
+        assertEq(gauge.earned(address(VARA), 3), staking.earned(address(owner3)));
     }
 
     function notifyRewardsAndCompare() public {
@@ -412,7 +419,7 @@ contract StakingTest is BaseTest {
         // uint256 gb = VARA.balanceOf(address(owner));
         address[] memory tokens = new address[](1);
         tokens[0] = address(VARA);
-        gauge.getReward(address(owner), tokens);
+        gauge.getReward(1, tokens);
         // uint256 ga = VARA.balanceOf(address(owner));
         vm.warp(block.timestamp + 604800);
         vm.roll(block.number + 1);
@@ -488,15 +495,14 @@ contract StakingTest is BaseTest {
         staking.stake(1e21);
         gauge.deposit(1e21, 1);
         gauge.batchRewardPerToken(address(LR), 200);
-        uint256 assertEqed1 = gauge.earned(address(LR), address(owner));
+        uint256 assertEqed1 = gauge.earned(address(LR), 0);
 
         uint256 before = LR.balanceOf(address(owner));
 
         address[] memory rewards = new address[](1);
         rewards[0] = address(LR);
-        gauge.getReward(address(owner), rewards);
+        gauge.getReward(0, rewards);
         uint256 after_ = LR.balanceOf(address(owner));
-
         assertEq(after_ - before, assertEqed1);
         assertGt(assertEqed1, 0);
     }

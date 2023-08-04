@@ -1,20 +1,19 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.13;
 
-import 'contracts/libraries/Math.sol';
-import 'contracts/interfaces/IBribe.sol';
-import 'contracts/interfaces/IBribeFactory.sol';
-import 'contracts/interfaces/IGauge.sol';
-import 'contracts/interfaces/IGaugeFactory.sol';
-import 'contracts/interfaces/IERC20.sol';
-import 'contracts/interfaces/IMinter.sol';
-import 'contracts/interfaces/IPair.sol';
-import 'contracts/interfaces/IPairFactory.sol';
-import 'contracts/interfaces/IVoter.sol';
-import 'contracts/interfaces/IVotingEscrow.sol';
+import "contracts/libraries/Math.sol";
+import "contracts/interfaces/IBribe.sol";
+import "contracts/interfaces/IBribeFactory.sol";
+import "contracts/interfaces/IGauge.sol";
+import "contracts/interfaces/IGaugeFactory.sol";
+import "contracts/interfaces/IERC20.sol";
+import "contracts/interfaces/IMinter.sol";
+import "contracts/interfaces/IPair.sol";
+import "contracts/interfaces/IPairFactory.sol";
+import "contracts/interfaces/IVoter.sol";
+import "contracts/interfaces/IVotingEscrow.sol";
 
 contract Voter is IVoter {
-
     address public immutable _ve; // the ve token that governs these contracts
     address public immutable factory; // the PairFactory
     address internal immutable base;
@@ -35,13 +34,19 @@ contract Voter is IVoter {
     mapping(address => uint256) public weights; // pool => weight
     mapping(uint => mapping(address => uint256)) public votes; // nft => pool => votes
     mapping(uint => address[]) public poolVote; // nft => pools
-    mapping(uint => uint) public usedWeights;  // nft => total voting weight of user
+    mapping(uint => uint) public usedWeights; // nft => total voting weight of user
     mapping(uint => uint) public lastVoted; // nft => timestamp of last vote, to ensure one vote per epoch
     mapping(address => bool) public isGauge;
     mapping(address => bool) public isWhitelisted;
     mapping(address => bool) public isAlive;
 
-    event GaugeCreated(address indexed gauge, address creator, address internal_bribe, address indexed external_bribe, address indexed pool);
+    event GaugeCreated(
+        address indexed gauge,
+        address creator,
+        address internal_bribe,
+        address indexed external_bribe,
+        address indexed pool
+    );
     event GaugeKilled(address indexed gauge);
     event GaugeRevived(address indexed gauge);
     event Voted(address indexed voter, uint tokenId, uint256 weight);
@@ -54,7 +59,7 @@ contract Voter is IVoter {
     event Detach(address indexed owner, address indexed gauge, uint tokenId);
     event Whitelisted(address indexed whitelister, address indexed token);
 
-    constructor(address __ve, address _factory, address  _gauges, address _bribes) {
+    constructor(address __ve, address _factory, address _gauges, address _bribes) {
         _ve = __ve;
         factory = _factory;
         base = IVotingEscrow(__ve).token();
@@ -110,7 +115,7 @@ contract Voter is IVoter {
         uint _poolVoteCnt = _poolVote.length;
         uint256 _totalWeight = 0;
 
-        for (uint i = 0; i < _poolVoteCnt; i ++) {
+        for (uint i = 0; i < _poolVoteCnt; i++) {
             address _pool = _poolVote[i];
             uint256 _votes = votes[_tokenId][_pool];
 
@@ -139,7 +144,7 @@ contract Voter is IVoter {
         uint _poolCnt = _poolVote.length;
         uint256[] memory _weights = new uint256[](_poolCnt);
 
-        for (uint i = 0; i < _poolCnt; i ++) {
+        for (uint i = 0; i < _poolCnt; i++) {
             _weights[i] = votes[_tokenId][_poolVote[i]];
         }
 
@@ -163,7 +168,7 @@ contract Voter is IVoter {
             address _gauge = gauges[_pool];
 
             if (isGauge[_gauge]) {
-                uint256 _poolWeight = _weights[i] * _weight / _totalVoteWeight;
+                uint256 _poolWeight = (_weights[i] * _weight) / _totalVoteWeight;
                 require(votes[_tokenId][_pool] == 0);
                 require(_poolWeight != 0);
                 _updateFor(_gauge);
@@ -184,7 +189,11 @@ contract Voter is IVoter {
         usedWeights[_tokenId] = uint256(_usedWeight);
     }
 
-    function vote(uint tokenId, address[] calldata _poolVote, uint256[] calldata _weights) external onlyNewEpoch(tokenId) {
+    function vote(
+        uint tokenId,
+        address[] calldata _poolVote,
+        uint256[] calldata _weights
+    ) external onlyNewEpoch(tokenId) {
         require(IVotingEscrow(_ve).isApprovedOrOwner(msg.sender, tokenId));
         require(_poolVote.length == _weights.length);
         lastVoted[tokenId] = block.timestamp;
@@ -218,18 +227,26 @@ contract Voter is IVoter {
             internalRewards[1] = tokenB;
 
             if (base != tokenA && base != tokenB) {
-              allowedRewards[2] = base;
+                allowedRewards[2] = base;
             }
         }
 
-        if (msg.sender != governor) { // gov can create for any pool, even non-Vara pairs
+        if (msg.sender != governor) {
+            // gov can create for any pool, even non-Vara pairs
             require(isPair, "!_pool");
             require(isWhitelisted[tokenA] && isWhitelisted[tokenB], "!whitelisted");
         }
 
         address _internal_bribe = IBribeFactory(bribefactory).createInternalBribe(internalRewards);
         address _external_bribe = IBribeFactory(bribefactory).createExternalBribe(allowedRewards);
-        address _gauge = IGaugeFactory(gaugefactory).createGauge(_pool, _internal_bribe, _external_bribe, _ve, isPair, allowedRewards);
+        address _gauge = IGaugeFactory(gaugefactory).createGauge(
+            _pool,
+            _internal_bribe,
+            _external_bribe,
+            _ve,
+            isPair,
+            allowedRewards
+        );
 
         IERC20(base).approve(_gauge, type(uint).max);
         internal_bribes[_gauge] = _internal_bribe;
@@ -293,7 +310,7 @@ contract Voter is IVoter {
 
     function notifyRewardAmount(uint amount) external {
         _safeTransferFrom(base, msg.sender, address(this), amount); // transfer the distro in
-        uint256 _ratio = amount * 1e18 / totalWeight; // 1e18 adjustment is removed during claim
+        uint256 _ratio = (amount * 1e18) / totalWeight; // 1e18 adjustment is removed during claim
         if (_ratio > 0) {
             index += _ratio;
         }
@@ -329,7 +346,7 @@ contract Voter is IVoter {
             supplyIndex[_gauge] = _index; // update _gauge current position to global position
             uint _delta = _index - _supplyIndex; // see if there is any difference that need to be accrued
             if (_delta > 0) {
-                uint _share = uint(_supplied) * _delta / 1e18; // add accrued difference for each supplied token
+                uint _share = (uint(_supplied) * _delta) / 1e18; // add accrued difference for each supplied token
                 if (isAlive[_gauge]) {
                     claimable[_gauge] += _share;
                 }
@@ -341,7 +358,7 @@ contract Voter is IVoter {
 
     function claimRewards(address[] memory _gauges, address[][] memory _tokens) external {
         for (uint i = 0; i < _gauges.length; i++) {
-            IGauge(_gauges[i]).getReward(msg.sender, _tokens[i]);
+            IGauge(_gauges[i]).getReward(IGauge(_gauges[i]).tokenIds(msg.sender), _tokens[i]);
         }
     }
 
@@ -361,7 +378,7 @@ contract Voter is IVoter {
 
     function distributeFees(address[] memory _gauges) external {
         for (uint i = 0; i < _gauges.length; i++) {
-            if (IGauge(_gauges[i]).isForPair()){
+            if (IGauge(_gauges[i]).isForPair()) {
                 IGauge(_gauges[i]).claimFees();
             }
         }
@@ -400,8 +417,9 @@ contract Voter is IVoter {
 
     function _safeTransferFrom(address token, address from, address to, uint256 value) internal {
         require(token.code.length > 0);
-        (bool success, bytes memory data) =
-        token.call(abi.encodeWithSelector(IERC20.transferFrom.selector, from, to, value));
+        (bool success, bytes memory data) = token.call(
+            abi.encodeWithSelector(IERC20.transferFrom.selector, from, to, value)
+        );
         require(success && (data.length == 0 || abi.decode(data, (bool))));
     }
 }

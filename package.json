@@ -34,6 +34,7 @@
     "@openzeppelin/merkle-tree": "^1.0.2"
   },
   "scripts": {
+    "compile": "forge compile",
     "test0": "forge test -vv",
     "test": "forge test -vvvvv",
     "live": "nodemon --exec yarn test0 -e sol,js,ts"

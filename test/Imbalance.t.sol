@@ -1,7 +1,7 @@
 // 1:1 with Hardhat test
 pragma solidity 0.8.13;
 
-import './BaseTest.sol';
+import "./BaseTest.sol";
 
 contract ImbalanceTest is BaseTest {
     VotingEscrow escrow;
@@ -68,13 +68,43 @@ contract ImbalanceTest is BaseTest {
 
         USDC.approve(address(router), USDC_100K);
         FRAX.approve(address(router), TOKEN_100K);
-        router.addLiquidity(address(FRAX), address(USDC), true, TOKEN_100K, USDC_100K, TOKEN_100K, USDC_100K, address(owner), block.timestamp);
+        router.addLiquidity(
+            address(FRAX),
+            address(USDC),
+            true,
+            TOKEN_100K,
+            USDC_100K,
+            TOKEN_100K,
+            USDC_100K,
+            address(owner),
+            block.timestamp
+        );
         USDC.approve(address(router), USDC_100K);
         FRAX.approve(address(router), TOKEN_100K);
-        router.addLiquidity(address(FRAX), address(USDC), false, TOKEN_100K, USDC_100K, TOKEN_100K, USDC_100K, address(owner), block.timestamp);
+        router.addLiquidity(
+            address(FRAX),
+            address(USDC),
+            false,
+            TOKEN_100K,
+            USDC_100K,
+            TOKEN_100K,
+            USDC_100K,
+            address(owner),
+            block.timestamp
+        );
         DAI.approve(address(router), TOKEN_100M);
         FRAX.approve(address(router), TOKEN_100M);
-        router.addLiquidity(address(FRAX), address(DAI), true, TOKEN_100M, TOKEN_100M, 0, 0, address(owner), block.timestamp);
+        router.addLiquidity(
+            address(FRAX),
+            address(DAI),
+            true,
+            TOKEN_100M,
+            TOKEN_100M,
+            0,
+            0,
+            address(owner),
+            block.timestamp
+        );
     }
 
     function deployVoter() public {
@@ -108,7 +138,7 @@ contract ImbalanceTest is BaseTest {
         pair3.approve(address(gauge3), total);
         gauge3.deposit(total, 0);
         assertEq(gauge3.totalSupply(), total);
-        assertEq(gauge3.earned(address(escrow), address(owner)), 0);
+        assertEq(gauge3.earned(address(escrow), 0), 0);
     }
 
     function testRouterPair3GetAmountsOutAndSwapExactTokensForTokens() public {
@@ -134,7 +164,17 @@ contract ImbalanceTest is BaseTest {
         DAI.approve(address(router), TOKEN_10B);
         FRAX.approve(address(router), TOKEN_10B);
         uint256 pairBefore = pair3.balanceOf(address(owner));
-        router.addLiquidity(address(FRAX), address(DAI), true, TOKEN_10B, TOKEN_10B, 0, 0, address(owner), block.timestamp);
+        router.addLiquidity(
+            address(FRAX),
+            address(DAI),
+            true,
+            TOKEN_10B,
+            TOKEN_10B,
+            0,
+            0,
+            address(owner),
+            block.timestamp
+        );
         uint256 pairAfter = pair3.balanceOf(address(owner));
         uint256 LPBal = pairAfter - pairBefore;
 
