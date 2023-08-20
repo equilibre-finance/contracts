@@ -7,4 +7,6 @@ interface IBribe {
     function getRewardForOwner(uint tokenId, address[] memory tokens) external;
     function notifyRewardAmount(address token, uint amount) external;
     function left(address token) external view returns (uint);
+    function rewardsListLength() external view returns (uint);
+    function rewards(uint index) external view returns (address);
 }

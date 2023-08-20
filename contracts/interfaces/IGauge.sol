@@ -7,4 +7,6 @@ interface IGauge {
     function claimFees() external returns (uint claimed0, uint claimed1);
     function left(address token) external view returns (uint);
     function isForPair() external view returns (bool);
+    function internal_bribe() external view returns (address);
+    function external_bribe() external view returns (address);
 }

@@ -42,6 +42,7 @@ abstract contract L2Governor is Context, ERC165, EIP712, IGovernor, IERC721Recei
         Timers.Timestamp voteEnd;
         bool executed;
         bool canceled;
+        address proposer;
     }
 
     string private _name;
@@ -269,6 +270,7 @@ abstract contract L2Governor is Context, ERC165, EIP712, IGovernor, IERC721Recei
 
         proposal.voteStart.setDeadline(start);
         proposal.voteEnd.setDeadline(deadline);
+        proposal.proposer = _msgSender();
 
         emit ProposalCreated(
             proposalId,
@@ -594,5 +596,27 @@ abstract contract L2Governor is Context, ERC165, EIP712, IGovernor, IERC721Recei
         bytes memory
     ) public virtual override returns (bytes4) {
         return this.onERC1155BatchReceived.selector;
+    }
+
+    function proposalProposer(uint256 proposalId) public view override returns (address){
+        return _proposals[proposalId].proposer;
+    }
+
+    function clock() public override view returns (uint48) {
+        return uint48(block.timestamp);
+    }
+
+    function CLOCK_MODE() public override view returns (string memory) {
+        return "mode=timestamp";
+    }
+
+    function cancel(
+        address[] memory targets,
+        uint256[] memory values,
+        bytes[] memory calldatas,
+        bytes32 descriptionHash
+    ) public override returns (uint256 proposalId) {
+        require(false, "disabled");
+        proposalId;
     }
 }

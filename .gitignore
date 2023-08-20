@@ -1,6 +1,6 @@
 # for verify
 args.js
-
+foundry-local.toml
 .env
 
 # Foundry
