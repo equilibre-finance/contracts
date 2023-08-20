@@ -6,10 +6,13 @@
   "directories": {
     "lib": "lib"
   },
-  "devDependencies": {
+  "dependencies": {
     "@nomiclabs/hardhat-ethers": "^2.0.6",
     "@nomiclabs/hardhat-etherscan": "^3.1.5",
     "@nomiclabs/hardhat-waffle": "^2.0.3",
+    "@openzeppelin/contracts": "^4.8.1",
+    "@openzeppelin/contracts-upgradeable": "^4.8.0",
+    "@openzeppelin/merkle-tree": "^1.0.2",
     "@typechain/ethers-v5": "^10.0.0",
     "@typechain/hardhat": "^6.0.0",
     "@types/chai": "^4.3.0",
@@ -22,20 +25,19 @@
     "hardhat": "^2.9.5",
     "hardhat-abi-exporter": "^2.9.0",
     "hardhat-preprocessor": "^0.1.4",
+    "hardhat-tracer": "^2.6.0",
     "prettier": "^2.6.2",
     "prettier-plugin-solidity": "^1.0.0-beta.19",
     "ts-node": "^10.7.0",
     "typechain": "^8.0.0",
     "typescript": "^4.6.4"
   },
-  "dependencies": {
-    "@openzeppelin/contracts": "^4.8.1",
-    "@openzeppelin/contracts-upgradeable": "^4.8.0",
-    "@openzeppelin/merkle-tree": "^1.0.2"
-  },
   "scripts": {
+    "hh": "hardhat test --network hardhat",
+    "test-hh": "hardhat test --v --network hardhat",
     "test0": "forge test -vv",
     "test": "forge test -vvvvv",
-    "live": "nodemon --exec yarn test0 -e sol,js,ts"
+    "live": "nodemon --exec yarn test0 -e sol,js,ts",
+    "live-hh": "nodemon --exec yarn test-hh -e sol,js,ts --watch contracts --watch test --watch hardhat.config.ts"
   }
 }

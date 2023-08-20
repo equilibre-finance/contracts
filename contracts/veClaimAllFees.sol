@@ -1,26 +1,78 @@
 pragma solidity 0.8.13;
-import {IVotingEscrow} from "contracts/interfaces/IVotingEscrow.sol";
-import {IVoter} from "contracts/interfaces/IVoter.sol";
-import {IPairFactory} from "contracts/interfaces/IPairFactory.sol";
+import {VotingEscrow} from "contracts/VotingEscrow.sol";
+import {Voter} from "contracts/Voter.sol";
+import {PairFactory} from "contracts/factories/PairFactory.sol";
 import {IBribe} from "contracts/interfaces/IBribe.sol";
 import {IERC20} from "contracts/interfaces/IERC20.sol";
 import {IGauge} from "contracts/interfaces/IGauge.sol";
 
 contract veClaimAllFees {
-    IVotingEscrow private ve;
-    IVoter private voter;
-    IPairFactory private pairFactory;
-    address private veAddress = 0x35361C9c2a324F5FB8f3aed2d7bA91CE1410893A;
-    address private voterAddress = 0x4eB2B9768da9Ea26E3aBe605c9040bC12F236a59;
-    address private pairFactoryAddress = 0xA138FAFc30f6Ec6980aAd22656F2F11C38B56a95;
+    VotingEscrow public ve;
+    Voter public voter;
+    PairFactory public pairFactory;
+
+    address public veAddress = 0x35361C9c2a324F5FB8f3aed2d7bA91CE1410893A;
+    address public voterAddress = 0x4eB2B9768da9Ea26E3aBe605c9040bC12F236a59;
+    address public pairFactoryAddress = 0xA138FAFc30f6Ec6980aAd22656F2F11C38B56a95;
 
     event ClaimFees(uint tokenId, address bribe, address token, uint amount, string symbol);
-    error NotApproved();
+    error NotApproved(address owner, address operator, uint tokenId);
+    error InvalidTokenId(uint tokenId);
 
     constructor(){
-        ve = IVotingEscrow(veAddress);
-        voter = IVoter(voterAddress);
-        pairFactory = IPairFactory(pairFactoryAddress);
+        ve = VotingEscrow(veAddress);
+        voter = Voter(voterAddress);
+        pairFactory = PairFactory(pairFactoryAddress);
+    }
+
+    address[] public gauges;
+    address[] public bribes;
+
+    uint public allPairsLength;
+    uint public gaugesLength;
+    uint public bribesLength;
+    address[][] public rewardsByBribe;
+
+    function syncGauges() public {
+        uint totalPools = pairFactory.allPairsLength();
+        if( allPairsLength == totalPools )
+            return;
+        allPairsLength = totalPools;
+        gauges = new address[](0);
+        for (uint i = 0; i < totalPools; i++) {
+            address pool = pairFactory.allPairs(i);
+            address gaugeAddress = voter.gauges(pool);
+            if (voter.gauges(pool) == address(0)) continue;
+            gauges.push(gaugeAddress);
+        }
+        gaugesLength = gauges.length;
+
+        bribes = new address[](0);
+        for (uint i = 0; i < gaugesLength; i++) {
+            address bribeInternalAddress = IGauge(gauges[i]).internal_bribe();
+            address bribeExternalAddress = IGauge(gauges[i]).external_bribe();
+            if (bribeInternalAddress != address(0)){
+                bribes.push(bribeInternalAddress);
+            }
+            if (bribeExternalAddress != address(0)){
+                bribes.push(bribeExternalAddress);
+            }
+        }
+
+        bribesLength = bribes.length;
+        rewardsByBribe = new address[][](bribesLength);
+        for (uint i = 0; i < bribesLength; i++) {
+            address bribe = bribes[i];
+            uint bribeTokens = IBribe(bribe).rewardsListLength();
+            for (uint j = 0; j < bribeTokens; j++) {
+                address token = IBribe(bribe).rewards(j);
+                if (token == address(0)){
+                    continue;
+                }
+                rewardsByBribe[i].push(token);
+            }
+        }
+
     }
 
     function claimByAddress(address user) public {
@@ -31,75 +83,45 @@ contract veClaimAllFees {
         }
     }
 
+    mapping(uint => uint) public lastClaimedIndex;
     function claimAllByTokenId(uint tokenId) public {
+
         address user = ve.ownerOf(tokenId);
-        if (!ve.isApprovedForAll(user, address(this)))
-            revert NotApproved();
-        // get all pools from factory:
-        uint totalPools = pairFactory.allPairsLength();
 
-        // get all gauges by pools address from voter:
-        for (uint i = 0; i < totalPools; i++) {
-            address pool = pairFactory.allPairs(i);
-            address gaugeAddress = voter.gauges(pool);
-            if (voter.gauges(pool) == address(0)) continue;
-            _prepareBribes(user, tokenId, IGauge(gaugeAddress));
-        }
-    }
+        if( user == address(0) )
+            revert InvalidTokenId(tokenId);
 
-    function _prepareBribes(address user, uint tokenId, IGauge gauge) internal {
-        address bribeInternalAddress = gauge.internal_bribe();
-        address bribeExternalAddress = gauge.external_bribe();
+        if( ve.getApproved(tokenId) != address(this) &&
+            ve.isApprovedForAll(user, address(this)) == false )
+            revert NotApproved(user, address(this), tokenId);
 
-        IBribe internalBribe = IBribe(bribeInternalAddress);
-        IBribe externalBribe = IBribe(bribeExternalAddress);
+        /// @dev check and reset last claimed index of this token,
+        ///      this allow us to restart the claim process if we run out of gas
+        if( lastClaimedIndex[tokenId] >= bribesLength )
+            lastClaimedIndex[tokenId] = 0;
 
-        uint rewardTokensInternal = internalBribe.rewardsListLength();
-        uint rewardTokensExternal = externalBribe.rewardsListLength();
+        for (uint i = lastClaimedIndex[tokenId]; i < bribesLength; i++) {
+            address[] memory bribe = new address[](1);
+            bribe[0] = bribes[i];
+            address[][] memory tokens = new address[][](1);
+            tokens[0] = rewardsByBribe[i];
 
-        address[] memory _rewardsInternal = new address[](rewardTokensInternal);
-        address[] memory _rewardsExternal = new address[](rewardTokensExternal);
-
-        for (uint j = 0; j < rewardTokensInternal; j++) {
-            address token = internalBribe.rewards(j);
-            if (token == address(0)) continue;
-            _rewardsInternal[j] = token;
-        }
-        for (uint j = 0; j < rewardTokensExternal; j++) {
-            address token = externalBribe.rewards(j);
-            if (token == address(0)) continue;
-            _rewardsExternal[j] = token;
-        }
-
-        _claimFeesFor(bribeInternalAddress, user, tokenId, _rewardsInternal);
-        _claimFeesFor(bribeExternalAddress, user, tokenId, _rewardsExternal);
-    }
-
-    function _claimFeesFor(address bribe, address user, uint tokenId, address[] memory tokens) internal
-    {
-        address[] memory _bribes = new address[](1);
-        _bribes[0] = bribe;
-
-        address[][] memory _tokens = new address[][](1);
-        _tokens[0] = tokens;
-
-        uint[] memory balancesBefore = new uint[](tokens.length);
-        for (uint i = 0; i < tokens.length; i++) {
-            IERC20 token = IERC20(tokens[i]);
-            balancesBefore[i] = token.balanceOf(user);
-        }
-
-        voter.claimFees(_bribes, _tokens, tokenId);
-
-        uint[] memory balancesAfter = new uint[](tokens.length);
-        for (uint i = 0; i < tokens.length; i++) {
-            IERC20 token = IERC20(tokens[i]);
-            balancesAfter[i] = token.balanceOf(user);
-            uint balanceDiff = balancesAfter[i] - balancesBefore[i];
-            if (balanceDiff > 0) {
-                emit ClaimFees(tokenId, bribe, tokens[i], balanceDiff, token.symbol());
+            /// @dev claim fees on a try as may a token can cause problems
+            ///     if it fails we will try again on the next claim
+            try voter.claimFees(bribe, tokens, tokenId) {
+                emit ClaimFees(tokenId, bribes[i], address(0), 0, "");
+            } catch {
+                continue;
             }
+            lastClaimedIndex[tokenId] = i;
+
+            /// @dev if we are running out of gas, stop the claim process
+            ///      and wait for the next claim
+            if( gasleft() * 100 / block.gaslimit < 5 )
+                return;
+
         }
+
     }
 
 }
