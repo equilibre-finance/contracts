@@ -180,7 +180,12 @@ describe("claimByAddress", function () {
         gasLimit = block.gasLimit;
 
         // call syncGauges:
-        await claimer.syncGauges();
+        const needToSyncGauges = await claimer.needToSyncGauges();
+        if (needToSyncGauges){
+            await claimer.syncGauges();
+            await claimer.syncBribes();
+            await claimer.syncRewards();
+        }
 
         gaugesLength = parseInt((await claimer.gaugesLength()).toString());
         allPairsLength = parseInt((await claimer.allPairsLength()).toString());

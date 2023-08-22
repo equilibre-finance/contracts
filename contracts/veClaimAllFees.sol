@@ -65,8 +65,6 @@ contract veClaimAllFees is Ownable {
      */
     function syncGauges() public {
         uint totalPools = pairFactory.allPairsLength();
-        if( needToSyncGauges() == false )
-            return;
         allPairsLength = totalPools;
         gauges = new address[](0);
         for (uint i = 0; i < totalPools; i++) {
@@ -76,7 +74,10 @@ contract veClaimAllFees is Ownable {
             gauges.push(gaugeAddress);
         }
         gaugesLength = gauges.length;
+    }
 
+    /// @dev used by our backend to check if we need to re-sync the list of bribes:
+    function syncBribes() public {
         bribes = new address[](0);
         for (uint i = 0; i < gaugesLength; i++) {
             address bribeInternalAddress = IGauge(gauges[i]).internal_bribe();
@@ -88,8 +89,11 @@ contract veClaimAllFees is Ownable {
                 bribes.push(bribeExternalAddress);
             }
         }
-
         bribesLength = bribes.length;
+    }
+
+    /// @dev used by our backend to check if we need to re-sync the list of rewards:
+    function syncRewards() public {
         rewardsByBribe = new address[][](bribesLength);
         for (uint i = 0; i < bribesLength; i++) {
             address bribe = bribes[i];
@@ -102,7 +106,6 @@ contract veClaimAllFees is Ownable {
                 rewardsByBribe[i].push(token);
             }
         }
-
     }
 
     /**
