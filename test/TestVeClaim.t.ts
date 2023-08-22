@@ -42,7 +42,7 @@ async function updateBalance(address: string): Promise<BigNumber[]> {
 }
 
 const pairFactoryAddress = '0xA138FAFc30f6Ec6980aAd22656F2F11C38B56a95';
-const veClaimAllFeesAddress = '0x4a66a158815f021fd9E552658e3a10e72B0D243E';
+const veClaimAllFeesAddress = '0x0199028feC4E4BbDB98EC8FBA3D1E24fb5204369';
 const votingEscrowAddress = '0x35361C9c2a324F5FB8f3aed2d7bA91CE1410893A';
 let allPools: number;
 let factory: Contracts.PairFactory;
