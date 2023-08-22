@@ -1,4 +1,10 @@
 async function main() {
+    /// @dev show deployer address and balance:
+    const [deployer] = await hre.ethers.getSigners();
+    console.log("Deploying contracts with the account:", deployer.address);
+    const balance = await deployer.getBalance();
+    console.log("Account balance:", hre.ethers.utils.formatEther(balance), "ETH");
+
     const veClaimAllFees = await hre.ethers.getContractFactory("veClaimAllFees")
     const main = await veClaimAllFees.deploy();
     await main.deployed();
