@@ -37,4 +37,5 @@ interface IVotingEscrow {
     function tokenOfOwnerByIndex(address, uint) external view returns (uint);
     function isApprovedForAll(address, address) external view returns (bool);
     function getApproved(uint) external view returns (address);
+
 }

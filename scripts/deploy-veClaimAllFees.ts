@@ -9,8 +9,16 @@ async function main() {
     const main = await veClaimAllFees.deploy();
     await main.deployed();
     console.log('main', main.address);
+
+    await main.syncGauges();
+    await main.syncBribes();
+    await main.syncRewards();
+
     await main.deployTransaction.wait(20);
     await hre.run("verify:verify", {address: main.address, constructorArguments: []});
+
+
+
 }
 
 main()

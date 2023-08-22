@@ -51,6 +51,9 @@ contract veClaimAllFees is Ownable {
     uint public bribesLength;
     address[][] public rewardsByBribe;
 
+    /// @dev max number of claims per transaction to avoid gas problem:
+    uint public maxClaimPerTx = 100;
+
     /**
      * @dev used by our backend to check if we need to re-sync the list of gauges and bribes:
      */
@@ -129,6 +132,8 @@ contract veClaimAllFees is Ownable {
         if( lastClaimedIndex[tokenId] >= bribesLength )
             lastClaimedIndex[tokenId] = 0;
 
+        uint claimed = 0;
+        /// @dev claim until maxClaimPerTx:
         for (uint i = lastClaimedIndex[tokenId]; i < bribesLength; i++) {
             address[] memory bribe = new address[](1);
             bribe[0] = bribes[i];
@@ -143,12 +148,9 @@ contract veClaimAllFees is Ownable {
                 continue;
             }
             lastClaimedIndex[tokenId] = i;
-
-            /// @dev if we are running out of gas, stop the claim process
-            ///      and wait for the next claim
-            if( gasleft() * 100 / block.gaslimit < 5 )
-                return;
-
+            claimed++;
+            if( claimed >= maxClaimPerTx )
+                break;
         }
 
     }
@@ -200,6 +202,10 @@ contract veClaimAllFees is Ownable {
                 break;
             }
         }
+    }
+
+    function setMaxClaimPerTx(uint _maxClaimPerTx) public onlyOwner {
+        maxClaimPerTx = _maxClaimPerTx;
     }
 
 }

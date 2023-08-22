@@ -2,7 +2,7 @@
 
 ## Contract Address
 
-- [veClaimAllFees](contracts/veClaimAllFees.sol) [`0x0199028feC4E4BbDB98EC8FBA3D1E24fb5204369`](https://kavascan.com/address/0x0199028feC4E4BbDB98EC8FBA3D1E24fb5204369/contracts#address-tabs)
+- [veClaimAllFees](contracts/veClaimAllFees.sol) [`0xbb47f033f7A5352F523795E1b9fc595D100DEa05`](https://kavascan.com/address/0xbb47f033f7A5352F523795E1b9fc595D100DEa05/contracts#address-tabs)
 
 ## Overview
 
