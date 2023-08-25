@@ -6,7 +6,7 @@ import {ILayerZeroEndpoint} from "@layerzerolabs/solidity-examples/contracts/int
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {ERC20} from 'lib/solmate/src/tokens/ERC20.sol';
 import {SafeTransferLib} from "lib/solmate/src/utils/SafeTransferLib.sol";
-import {console2} from "forge-std/console2.sol";
+// import {console2} from "forge-std/console2.sol";
 
 contract bVara is OFTV2
 {
