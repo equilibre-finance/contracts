@@ -9,4 +9,5 @@ interface IBribe {
     function left(address token) external view returns (uint);
     function rewardsListLength() external view returns (uint);
     function rewards(uint index) external view returns (address);
+    function earned(address token, uint tokenId) external view returns (uint);
 }

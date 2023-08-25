@@ -11,7 +11,17 @@ import {config as dotenvConfig} from "dotenv";
 
 dotenvConfig({path: resolve(__dirname, "./.env")});
 
-import {HardhatUserConfig} from "hardhat/config";
+import {HardhatUserConfig, task} from "hardhat/config";
+
+
+/// @dev task to create random private key
+task("create-wallet", "Create a wallet")
+    .setAction(async (args, hre) => {
+        const {ethers} = hre;
+        const wallet = ethers.Wallet.createRandom();
+        console.log(`Address: ${wallet.address}`);
+        console.log(`Private Key: ${wallet.privateKey}`);
+    });
 
 const config: HardhatUserConfig = {
     defaultNetwork: "hardhat",

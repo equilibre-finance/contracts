@@ -7,7 +7,7 @@ import {IBribe} from "contracts/interfaces/IBribe.sol";
 import {IERC20} from "contracts/interfaces/IERC20.sol";
 import {IGauge} from "contracts/interfaces/IGauge.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-
+//import {console} from "hardhat/console.sol";
 
 /**
  * @title veClaimAllFees
@@ -23,18 +23,12 @@ contract veClaimAllFees is Ownable {
     IVoter public voter = IVoter(0x4eB2B9768da9Ea26E3aBe605c9040bC12F236a59);
     IPairFactory public pairFactory = IPairFactory(0xA138FAFc30f6Ec6980aAd22656F2F11C38B56a95);
 
-    /// @dev last claimed index for each token, used to continue process if we run out of gas:
-    mapping(uint => uint) public lastClaimedIndex;
-
     /// @dev list of address in the auto-claim list, once user is added to this list
     ///      we call claimAllByTokenId() for user, so we subsidize the gas fees for the user:
     address[] public autoClaimAddresses;
 
     /// @dev status of each user is present in the auto-claim list:
     mapping(address => bool) public autoClaimStatus;
-
-    /// @dev event emitted when a user claim fees:
-    event ClaimFees(uint tokenId, address bribe, address token, uint amount, string symbol);
 
     /// @dev error messages:
     error NotApproved(address owner, address operator, uint tokenId);
@@ -49,10 +43,7 @@ contract veClaimAllFees is Ownable {
     uint public allPairsLength;
     uint public gaugesLength;
     uint public bribesLength;
-    address[][] public rewardsByBribe;
-
-    /// @dev max number of claims per transaction to avoid gas problem:
-    uint public maxClaimPerTx = 100;
+    address[][] private rewardsByBribe;
 
     /**
      * @dev used by our backend to check if we need to re-sync the list of gauges and bribes:
@@ -93,66 +84,6 @@ contract veClaimAllFees is Ownable {
             }
         }
         bribesLength = bribes.length;
-    }
-
-    /// @dev used by our backend to check if we need to re-sync the list of rewards:
-    function syncRewards() public {
-        rewardsByBribe = new address[][](bribesLength);
-        for (uint i = 0; i < bribesLength; i++) {
-            address bribe = bribes[i];
-            uint bribeTokens = IBribe(bribe).rewardsListLength();
-            for (uint j = 0; j < bribeTokens; j++) {
-                address token = IBribe(bribe).rewards(j);
-                if (token == address(0)){
-                    continue;
-                }
-                rewardsByBribe[i].push(token);
-            }
-        }
-    }
-
-    /**
-     * @dev claim all fees for a tokenId, this function is called from the auto-claim list,
-     *      we use the lastClaimedIndex to continue the claim process if we run out of gas.
-     *      Also, this function can be called by the ui too by any user.
-     */
-    function claimAllByTokenId(uint tokenId) public {
-
-        address user = ve.ownerOf(tokenId);
-
-        if( user == address(0) )
-            revert InvalidTokenId(tokenId);
-
-        if( ve.getApproved(tokenId) != address(this) &&
-            ve.isApprovedForAll(user, address(this)) == false )
-            revert NotApproved(user, address(this), tokenId);
-
-        /// @dev check and reset last claimed index of this token,
-        ///      this allow us to restart the claim process if we run out of gas
-        if( lastClaimedIndex[tokenId] >= bribesLength )
-            lastClaimedIndex[tokenId] = 0;
-
-        uint claimed = 0;
-        /// @dev claim until maxClaimPerTx:
-        for (uint i = lastClaimedIndex[tokenId]; i < bribesLength; i++) {
-            address[] memory bribe = new address[](1);
-            bribe[0] = bribes[i];
-            address[][] memory tokens = new address[][](1);
-            tokens[0] = rewardsByBribe[i];
-
-            /// @dev claim fees on a try as may a token can cause problems
-            ///     if it fails we will try again on the next claim
-            try voter.claimFees(bribe, tokens, tokenId) {
-                emit ClaimFees(tokenId, bribes[i], address(0), 0, "");
-            } catch {
-                continue;
-            }
-            lastClaimedIndex[tokenId] = i;
-            claimed++;
-            if( claimed >= maxClaimPerTx )
-                break;
-        }
-
     }
 
     /// @dev modifier to check permission on user list operations:
@@ -204,8 +135,37 @@ contract veClaimAllFees is Ownable {
         }
     }
 
-    function setMaxClaimPerTx(uint _maxClaimPerTx) public onlyOwner {
-        maxClaimPerTx = _maxClaimPerTx;
-    }
+    /**
+     * @dev claim all fees for a tokenId, this function is called from the auto-claim list,
+     *      we use the lastClaimedIndex to continue the claim process if we run out of gas.
+     *      Also, this function can be called by the ui too by any user.
+     */
+    function claim(uint tokenId, uint offset, uint limit) public {
+        if( offset >= bribesLength )
+            return;
+        /// @dev claim until maxClaimPerTx:
+        for (uint i = offset; i < limit; i++) {
+            /// @dev check if we still have any gas left:
+            address bribeAddress = bribes[i];
+            IBribe bribe = IBribe(bribeAddress);
+            /// @dev we use storage cash as we can dynamic push to it:
+            rewardsByBribe = new address[][](1);
+            uint rewardsListLength = IBribe(bribe).rewardsListLength();
+            for (uint j = 0; j < rewardsListLength; j++){
+                address token = bribe.rewards(j);
+                uint earned = bribe.earned( token, tokenId );
+                if( earned == 0 ) continue;
+                rewardsByBribe[0].push(token);
+            }
 
+            /// @dev check if we have any earned token on this bribe:
+            if( rewardsByBribe[0].length > 0 ){
+                address[] memory bribeData = new address[](1);
+                bribeData[0] = bribeAddress;
+                voter.claimFees(bribeData, rewardsByBribe, tokenId);
+            }
+
+        }
+
+    }
 }

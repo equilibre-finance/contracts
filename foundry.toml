@@ -2,5 +2,5 @@
 src = 'contracts'
 out = 'artifacts'
 [rpc_endpoints]
-mainnet = 'https://evm.data.equilibre.kava.io/'
+mainnet = 'https://evm.kava.io/'
 testnet = 'https://evm.testnet.kava.io/'
