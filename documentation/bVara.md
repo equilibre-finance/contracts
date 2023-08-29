@@ -42,3 +42,11 @@
 
 - To burn bVara tokens, just call `burn(fromAddress, amount)` to burn the given amount of bVara.
 - Only admin can burn tokens, also, the admin can burn tokens from any address.
+
+# Converting bVARA to veVARA
+
+- To convert bVara to veVara, just call `convertToVe(amount, lockDuration)` to convert the given amount of bVara to veVara.
+- The `amount` should be any amount that use has as balance in bVara.
+- The `lockDuration` is the duration in seconds that the user wants to lock the veVara for, this will be used to calculate the voting power of the user.
+- The contract will mint the given amount of veVara to the sender and burn the same amount of bVara from the sender.
+- Also, a new tokenId or position will be created and sent to the sender, this will be used to vote in the governance.

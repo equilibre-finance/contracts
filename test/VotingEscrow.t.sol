@@ -1,7 +1,7 @@
 // 1:1 with Hardhat test
 pragma solidity 0.8.13;
 
-import "./BaseTest.sol";
+import "../test/BaseTest.sol";
 
 contract VotingEscrowTest is BaseTest {
     VotingEscrow escrow;

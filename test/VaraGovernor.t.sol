@@ -1,6 +1,6 @@
 pragma solidity 0.8.13;
 
-import "./BaseTest.sol";
+import "../test/BaseTest.sol";
 import "contracts/VaraGovernor.sol";
 
 contract VaraGovernorTest is BaseTest {

@@ -6,6 +6,8 @@ import {ILayerZeroEndpoint} from "@layerzerolabs/solidity-examples/contracts/int
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {ERC20} from 'lib/solmate/src/tokens/ERC20.sol';
 import {SafeTransferLib} from "lib/solmate/src/utils/SafeTransferLib.sol";
+import {IVotingEscrow} from "contracts/interfaces/IVotingEscrow.sol";
+
 // import {console2} from "forge-std/console2.sol";
 
 contract bVara is OFTV2
@@ -15,6 +17,7 @@ contract bVara is OFTV2
     uint public maxPenaltyPct = 90;
 
     ERC20 public immutable asset;
+    IVotingEscrow public immutable ve;
 
     /// @dev controls who can do transfers:
     mapping(address => bool) public whiteList;
@@ -29,15 +32,16 @@ contract bVara is OFTV2
     error InsufficientBalance();
     error InsufficientAllowance();
 
-    constructor(ERC20 _asset)
+    constructor(ERC20 _asset, address _ve )
     OFTV2(string(abi.encodePacked(_asset.symbol(), " bToken")),
     string(abi.encodePacked("b", _asset.symbol())), 8, address(0))
     {
         asset = _asset;
-
+        ve = IVotingEscrow(_ve);
+        
         /// @dev set owner as whiteListed:
-        whiteList[msg.sender] = true;
-        emit WhiteList(msg.sender, true);
+        whiteList[_msgSender()] = true;
+        emit WhiteList(_msgSender(), true);
 
         /// @dev whitelist 0 address as it is the minter:
         whiteList[address(0)] = true;
@@ -79,17 +83,17 @@ contract bVara is OFTV2
     function mint(address _to, uint256 _amount) public onlyOwner {
 
         /// @dev check allowance:
-        if (asset.allowance(msg.sender, address(this)) < _amount) {
+        if (asset.allowance(_msgSender(), address(this)) < _amount) {
             revert InsufficientAllowance();
         }
 
         /// @dev check balance:
-        if (asset.balanceOf(msg.sender) < _amount) {
+        if (asset.balanceOf(_msgSender()) < _amount) {
             revert InsufficientBalance();
         }
 
         /// @dev transfer asset to this contract:
-        SafeTransferLib.safeTransferFrom(asset, msg.sender, address(this), _amount);
+        SafeTransferLib.safeTransferFrom(asset, _msgSender(), address(this), _amount);
 
         /// @dev mint bToken to _to:
         _mint(_to, _amount);
@@ -121,15 +125,32 @@ contract bVara is OFTV2
     function redeem(uint256 _amount) public {
 
         /// @dev check penalty:
-        uint256 _redeemAmount = computePenaltyRedemption(msg.sender, _amount);
+        uint256 _redeemAmount = computePenaltyRedemption(_msgSender(), _amount);
 
         /// @dev burn bToken:
-        _burn(msg.sender, _amount);
+        _burn(_msgSender(), _amount);
 
         /// @dev transfer asset to msg sender:
-        SafeTransferLib.safeTransfer(asset, msg.sender, _redeemAmount);
+        SafeTransferLib.safeTransfer(asset, _msgSender(), _redeemAmount);
 
-        emit Redeemed(msg.sender, _amount, _redeemAmount);
+        emit Redeemed(_msgSender(), _amount, _redeemAmount);
+    }
+
+    /// @dev convert bVARA to veVARA:
+    function convertToVe(uint256 _amount, uint _lock_duration) public returns (uint256 tokenId){
+
+        /// @dev check balance:
+        if (balanceOf(_msgSender()) < _amount) {
+            revert InsufficientBalance();
+        }
+
+        /// @dev burn bToken:
+        _burn(_msgSender(), _amount);
+
+        /// @dev mint veToken:
+        asset.approve(address(ve), _amount);
+        return ve.create_lock_for(_amount, _lock_duration, _msgSender());
+
     }
 
     /// @dev only allow transfers if from or to is whiteListed:

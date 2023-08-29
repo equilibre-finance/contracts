@@ -38,4 +38,6 @@ interface IVotingEscrow {
     function isApprovedForAll(address, address) external view returns (bool);
     function getApproved(uint) external view returns (address);
 
+    function locked(uint) external view returns (int128, uint);
+
 }

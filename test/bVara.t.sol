@@ -7,16 +7,20 @@ import {Vara} from "contracts/Vara.sol";
 import {bVara} from "contracts/bVara.sol";
 import {ERC20} from 'lib/solmate/src/tokens/ERC20.sol';
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
+import {VotingEscrow} from "contracts/VotingEscrow.sol";
+
 contract bVaraTest is Test {
     using Strings for uint256;
     Vara private vara;
     bVara private main;
+    VotingEscrow private ve;
+
     address private user = makeAddr("user");
 
     function setUp() public {
         vara = new Vara();
-        main = new bVara(ERC20(address(vara)));
-        // console2.log("b asset info: ", main.symbol(), main.name() );
+        ve = new VotingEscrow(address(vara), address(0) );
+        main = new bVara(ERC20(address(vara)), address(ve));
     }
 
     /// @dev we should get max penalty for <= 1 day:
@@ -221,6 +225,34 @@ contract bVaraTest is Test {
 
         /// @dev after 2 months passed, we should be able to redeem with 33% penalty:
         _redemption( 60 days, 100, 70 );
+
+    }
+
+    function testConvertToVe() public{
+        uint amount = 100 ether;
+        uint lockFor = 100 days;
+        /// @dev mint and allow test tokens:
+        vara.mint(address(this), amount);
+        vara.approve(address(main), amount);
+
+        /// @dev mint tokens for user:
+        main.mint(user, amount);
+        assertEq(main.balanceOf(user), amount, "bVARA BALANCE should be 100");
+
+        /// @dev we should be able to convert to veVARA:
+        vm.startPrank(user);
+        uint tokenId = main.convertToVe(amount, lockFor);
+        vm.stopPrank();
+
+        assertEq(main.balanceOf(user), 0, "bVARA BALANCE should be 0");
+        assertEq(ve.ownerOf(tokenId), user, "OWNER should be user");
+
+        (int128 _amount, uint end) = ve.locked(tokenId);
+        uint deposited = uint(uint128(_amount));
+
+        uint unlock_time = (block.timestamp + lockFor) / 1 weeks * 1 weeks;
+        assertEq(deposited, amount, "veVARA BALANCE should be 100");
+        assertEq(end, unlock_time, "END should be 100 days");
 
     }
 
