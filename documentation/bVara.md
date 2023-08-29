@@ -57,3 +57,4 @@
 - All conversions from bVara to veVARA are a full 4y lock.
 - The contract will mint the given amount of veVara to the sender and burn the same amount of bVara from the sender.
 - Also, a new tokenId or position will be created and sent to the sender, this will be used to vote in the governance.
+
