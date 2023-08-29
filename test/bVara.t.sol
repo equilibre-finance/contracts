@@ -230,7 +230,6 @@ contract bVaraTest is Test {
 
     function testConvertToVe() public{
         uint amount = 100 ether;
-        uint lockFor = 100 days;
         /// @dev mint and allow test tokens:
         vara.mint(address(this), amount);
         vara.approve(address(main), amount);
@@ -241,7 +240,7 @@ contract bVaraTest is Test {
 
         /// @dev we should be able to convert to veVARA:
         vm.startPrank(user);
-        uint tokenId = main.convertToVe(amount, lockFor);
+        uint tokenId = main.convertToVe(amount);
         vm.stopPrank();
 
         assertEq(main.balanceOf(user), 0, "bVARA BALANCE should be 0");
@@ -250,9 +249,10 @@ contract bVaraTest is Test {
         (int128 _amount, uint end) = ve.locked(tokenId);
         uint deposited = uint(uint128(_amount));
 
-        uint unlock_time = (block.timestamp + lockFor) / 1 weeks * 1 weeks;
+        /// @dev conversion always lock for 4y:
+        uint _lock_duration = ( (block.timestamp + (365 days * 4) ) / 1 weeks * 1 weeks);
         assertEq(deposited, amount, "veVARA BALANCE should be 100");
-        assertEq(end, unlock_time, "END should be 100 days");
+        assertEq(end, _lock_duration, "END should be 100 days");
 
     }
 

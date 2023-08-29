@@ -137,7 +137,7 @@ contract bVara is OFTV2
     }
 
     /// @dev convert bVARA to veVARA:
-    function convertToVe(uint256 _amount, uint _lock_duration) public returns (uint256 tokenId){
+    function convertToVe(uint256 _amount) public returns (uint256 tokenId){
 
         /// @dev check balance:
         if (balanceOf(_msgSender()) < _amount) {
@@ -149,6 +149,9 @@ contract bVara is OFTV2
 
         /// @dev mint veToken:
         asset.approve(address(ve), _amount);
+
+        /// @dev conversion always lock for 4y:
+        uint _lock_duration = ( (block.timestamp + (365 days * 4) ) / 1 weeks * 1 weeks) - 1;
         return ve.create_lock_for(_amount, _lock_duration, _msgSender());
 
     }
