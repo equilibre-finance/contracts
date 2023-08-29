@@ -2,7 +2,7 @@
 
 ## Contract Address
 
-- [bVara](contracts/bVara.sol) [`0xC7FF4FE9a2aCf672478855409BC104B4a7783daB`](https://kavascan.com/address/0xC7FF4FE9a2aCf672478855409BC104B4a7783daB/contracts#address-tabs)
+- [bVara](contracts/bVara.sol) [`0x20f29Ba234d84664D2B382DB6803b6b334BFC43d`](https://kavascan.com/address/0x20f29Ba234d84664D2B382DB6803b6b334BFC43d/contracts#address-tabs)
 
 ## Overview
 
@@ -45,8 +45,8 @@
 
 # Converting bVARA to veVARA
 
-- To convert bVara to veVara, just call `convertToVe(amount, lockDuration)` to convert the given amount of bVara to veVara.
+- To convert bVara to veVara, just call `convertToVe(amount)` to convert the given amount of bVara to veVara.
 - The `amount` should be any amount that use has as balance in bVara.
-- The `lockDuration` is the duration in seconds that the user wants to lock the veVara for, this will be used to calculate the voting power of the user.
+- All conversions from bVara to veVARA are a full 4y lock.
 - The contract will mint the given amount of veVara to the sender and burn the same amount of bVara from the sender.
 - Also, a new tokenId or position will be created and sent to the sender, this will be used to vote in the governance.
