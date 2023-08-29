@@ -2,7 +2,14 @@
 
 ## Contract Address
 
-- [bVara](contracts/bVara.sol) [`0x20f29Ba234d84664D2B382DB6803b6b334BFC43d`](https://kavascan.com/address/0x20f29Ba234d84664D2B382DB6803b6b334BFC43d/contracts#address-tabs)
+- [bVara](contracts/bVaraImplementation.sol) [`0x9d8054aaf108A5B5fb9fE27F89F3Db11E82fc94F`](https://kavascan.com/address/0x9d8054aaf108A5B5fb9fE27F89F3Db11E82fc94F/contracts#address-tabs)
+  > Attention: use the proxy address to interact with the contract.
+
+- [Implementation](contracts/bVaraImplementation.sol) [`0x666070542cec389077Da25d7A11Fd9c9262d3AC4`](https://kavascan.com/address/0x666070542cec389077Da25d7A11Fd9c9262d3AC4/contracts#address-tabs)
+  > Attention: this is the implementation, don't interact with it.
+
+- [Admin: `0x7cef2432A2690168Fb8eb7118A74d5f8EfF9Ef55`](https://kavascan.com/address/0x7cef2432A2690168Fb8eb7118A74d5f8EfF9Ef55)
+  > This is the user that can mint and burn tokens also, this user can burn tokens from any address.
 
 ## Overview
 

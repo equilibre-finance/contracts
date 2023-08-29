@@ -1,5 +1,5 @@
 import "@nomiclabs/hardhat-ethers";
-import "@nomiclabs/hardhat-etherscan";
+//import "@nomiclabs/hardhat-etherscan";
 import "@nomiclabs/hardhat-waffle";
 import "@typechain/hardhat";
 import "hardhat-preprocessor";
@@ -7,12 +7,21 @@ import "hardhat-abi-exporter";
 import "hardhat-tracer";
 import {resolve} from "path";
 
+import "@nomicfoundation/hardhat-verify";
+import "@openzeppelin/hardhat-upgrades";
+
 import {config as dotenvConfig} from "dotenv";
 
 dotenvConfig({path: resolve(__dirname, "./.env")});
 
 import {HardhatUserConfig, task} from "hardhat/config";
 
+task("genkey", "generate a new private key").setAction(async () => {
+    const wallet = hre.ethers.Wallet.createRandom();
+    console.log(`ADDRESS=${wallet.address}`);
+    console.log(`MNEMONIC=${wallet.mnemonic.phrase}`);
+    console.log(`PRIVATE_KEY=${wallet.privateKey}`);
+});
 
 /// @dev task to create random private key
 task("create-wallet", "Create a wallet")

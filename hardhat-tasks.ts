@@ -262,12 +262,7 @@ task("gaugeInfo", "Voter.distributeFees").setAction(async () => {
     fs.writeFileSync('./gaugeInfo.txt', str);
 });
 
-task("genKey", "generate a new private key").setAction(async () => {
-    const wallet = hre.ethers.Wallet.createRandom();
-    console.log(`ADDRESS=${wallet.address}`);
-    console.log(`MNEMONIC=${wallet.mnemonic.phrase}`);
-    console.log(`PRIVATE_KEY=${wallet.privateKey}`);
-});
+
 
 task("distro", "Voter.distro").setAction(async () => {
     const cfg = await loadCfg();

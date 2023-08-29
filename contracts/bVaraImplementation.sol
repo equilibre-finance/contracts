@@ -1,23 +1,24 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.13;
 
-import {OFTV2} from "@layerzerolabs/solidity-examples/contracts/token/oft/v2/OFTV2.sol";
-import {ILayerZeroEndpoint} from "@layerzerolabs/solidity-examples/contracts/interfaces/ILayerZeroEndpoint.sol";
+import {OFTUpgradeable} from "@layerzerolabs/solidity-examples/contracts/contracts-upgradable/token/oft/OFTUpgradeable.sol";
+import {ILayerZeroEndpointUpgradeable} from "@layerzerolabs/solidity-examples/contracts/contracts-upgradable/interfaces/ILayerZeroEndpointUpgradeable.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
-import {ERC20} from 'lib/solmate/src/tokens/ERC20.sol';
-import {SafeTransferLib} from "lib/solmate/src/utils/SafeTransferLib.sol";
+import {ERC20} from '../lib/solmate/src/tokens/ERC20.sol';
+import {SafeTransferLib} from "../lib/solmate/src/utils/SafeTransferLib.sol";
 import {IVotingEscrow} from "contracts/interfaces/IVotingEscrow.sol";
+import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
-// import {console2} from "forge-std/console2.sol";
+//import {console2} from "forge-std/console2.sol";
 
-contract bVara is OFTV2
+contract bVaraImplementation is Initializable, OFTUpgradeable
 {
 
-    uint public minWithdrawDays = 90 days;
-    uint public maxPenaltyPct = 90;
+    uint public minWithdrawDays;
+    uint public maxPenaltyPct;
 
-    ERC20 public immutable asset;
-    IVotingEscrow public immutable ve;
+    ERC20 public asset;
+    IVotingEscrow public ve;
 
     /// @dev controls who can do transfers:
     mapping(address => bool) public whiteList;
@@ -32,13 +33,17 @@ contract bVara is OFTV2
     error InsufficientBalance();
     error InsufficientAllowance();
 
-    constructor(ERC20 _asset, address _ve )
-    OFTV2(string(abi.encodePacked(_asset.symbol(), " bToken")),
-    string(abi.encodePacked("b", _asset.symbol())), 8, address(0))
-    {
+    function initialize( ERC20 _asset, address _ve ) initializer public {
+
+        __OFTUpgradeable_init("bVara Token", "bVARA", address(0));
+
         asset = _asset;
         ve = IVotingEscrow(_ve);
-        
+
+        /// @dev set default values for proxy:
+        minWithdrawDays = 90 days;
+        maxPenaltyPct = 90;
+
         /// @dev set owner as whiteListed:
         whiteList[_msgSender()] = true;
         emit WhiteList(_msgSender(), true);
@@ -65,7 +70,7 @@ contract bVara is OFTV2
 
     // @dev sets the LZ endpoint anytime if we need it:
     function setEndpoint(address _endpoint) public onlyOwner {
-        lzEndpoint = ILayerZeroEndpoint(_endpoint);
+        lzEndpoint = ILayerZeroEndpointUpgradeable(_endpoint);
     }
 
     /// @dev set mint withdrawal window in days to avoid penalties:

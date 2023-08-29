@@ -4,23 +4,65 @@ pragma solidity 0.8.13;
 import {Test} from "forge-std/Test.sol";
 import {console2} from "forge-std/console2.sol";
 import {Vara} from "contracts/Vara.sol";
-import {bVara} from "contracts/bVara.sol";
+import {bVaraImplementation} from "contracts/bVaraImplementation.sol";
 import {ERC20} from 'lib/solmate/src/tokens/ERC20.sol';
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {VotingEscrow} from "contracts/VotingEscrow.sol";
+import {TransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 
-contract bVaraTest is Test {
+
+contract bVaraImplementationTest is Test {
     using Strings for uint256;
     Vara private vara;
-    bVara private main;
+    bVaraImplementation private main;
+    bVaraImplementation private implementation;
     VotingEscrow private ve;
+    TransparentUpgradeableProxy proxy;
 
+    /// @dev the admin address only for proxy upgrade:
+    address private proxyAdmin = address(0x52B9Ff6f13ca7A871a7112d2a3912adc07F054c4);
+    address private admin = address(0x7cef2432A2690168Fb8eb7118A74d5f8EfF9Ef55);
     address private user = makeAddr("user");
 
     function setUp() public {
         vara = new Vara();
-        ve = new VotingEscrow(address(vara), address(0) );
-        main = new bVara(ERC20(address(vara)), address(ve));
+        ve = new VotingEscrow(address(vara), address(0));
+
+        /// @dev deploy the implementation:
+        implementation = new bVaraImplementation();
+
+        /// @dev deploy proxy:
+        bytes memory _data = abi.encodeWithSignature("initialize(address,address)", address(vara), address(ve));
+        main = bVaraImplementation(address(proxy = new TransparentUpgradeableProxy(address(implementation), proxyAdmin, _data)));
+
+        /// @dev transfer contract to admin:
+        main.transferOwnership(address(admin));
+
+    }
+
+    /// @dev test if revert when user try to deposit into implementation:
+    function testDepositRevert() public {
+        /// @dev mint and allow test tokens:
+        vara.mint(admin, 100);
+        vara.approve(address(implementation), 100);
+
+
+        vm.expectRevert(abi.encodePacked("Ownable: caller is not the owner"));
+        implementation.mint(user, 100);
+
+    }
+
+    /// @dev test if minWithdrawDays is 90 days and maxPenaltyPct is 90:
+    function testProxyMinWithdrawDays() public {
+        assertEq(main.minWithdrawDays(), 90 days, "WITHDRAWAL WINDOW should be 90 days");
+        assertEq(main.maxPenaltyPct(), 90, "MAX PENALTY should be 90");
+    }
+
+    /// @dev test if admin is set correctly:
+    function testProxyAdmin() public {
+        vm.startPrank(proxyAdmin);
+        assertEq(proxy.admin(), proxyAdmin, "ADMIN should be this");
+        vm.stopPrank();
     }
 
     /// @dev we should get max penalty for <= 1 day:
@@ -60,8 +102,10 @@ contract bVaraTest is Test {
     function testEndpointSetup() public {
         address testEndpoint = makeAddr("testEndpoint");
         /// @dev we should be able to set endpoint as owner:
+        vm.startPrank(admin);
         main.setEndpoint(testEndpoint);
         assertEq(address(main.lzEndpoint()), testEndpoint, "LZ ENDPOINT should be this");
+        vm.stopPrank();
 
         /// @dev we should not be able to set endpoint as non-owner:
         vm.startPrank(user);
@@ -74,7 +118,9 @@ contract bVaraTest is Test {
     function testWithdrawalWindowSetup() public {
         uint testWindow = 100 days;
         /// @dev we should be able to set withdrawal window as owner:
+        vm.startPrank(admin);
         main.setWithdrawalWindow(testWindow);
+        vm.stopPrank();
         assertEq(main.minWithdrawDays(), testWindow, "WITHDRAWAL WINDOW should be this");
 
         /// @dev we should not be able to set withdrawal window as non-owner:
@@ -86,7 +132,9 @@ contract bVaraTest is Test {
 
     function testSetWhitelist() public {
         /// @dev we should be able to set whitelist as owner:
+        vm.startPrank(admin);
         main.setWhitelist(user, true);
+        vm.stopPrank();
         assertEq(main.whiteList(user), true, "not whitelisted");
 
         /// @dev we should not be able to set whitelist as non-owner:
@@ -99,11 +147,15 @@ contract bVaraTest is Test {
     function testMintSecurity() public {
         /// @dev mint and allow test tokens:
 
-        vara.mint(address(this), 100);
+        vara.mint(admin, 100);
+        vm.startPrank(admin);
         vara.approve(address(main), 100);
+        vm.stopPrank();
 
         /// @dev we should be able to mint as owner:
+        vm.startPrank(admin);
         main.mint(user, 100);
+        vm.stopPrank();
         assertEq(main.balanceOf(user), 100, "bVARA BALANCE should be 100");
 
         /// @dev we should not be able to mint as non-owner:
@@ -116,11 +168,15 @@ contract bVaraTest is Test {
     /// @dev test mint to users:
     function testMintToUser() public {
         /// @dev mint and allow test tokens:
-        vara.mint(address(this), 100);
+        vara.mint(admin, 100);
+        vm.startPrank(admin);
         vara.approve(address(main), 100);
+        vm.stopPrank();
 
         /// @dev we should be able to mint as owner:
+        vm.startPrank(admin);
         main.mint(user, 100);
+        vm.stopPrank();
         assertEq(main.balanceOf(user), 100, "bVARA BALANCE should be 100");
     }
 
@@ -131,22 +187,27 @@ contract bVaraTest is Test {
         address user2 = makeAddr("user2");
 
         /// @dev mint and allow test tokens:
-        vara.mint(address(this), 100);
+        vara.mint(admin, 100);
+        vm.startPrank(admin);
         vara.approve(address(main), 100);
+        vm.stopPrank();
 
         /// @dev we should be able to mint as owner:
+        vm.startPrank(admin);
         main.mint(user1, 100);
+        vm.stopPrank();
         assertEq(main.balanceOf(user1), 100, "bVARA BALANCE should be this");
 
         /// @dev should revert if not whitelisted:
         vm.startPrank(user1);
-        vm.expectRevert(abi.encodePacked(bVara.NonWhiteListed.selector));
+        vm.expectRevert(abi.encodePacked(bVaraImplementation.NonWhiteListed.selector));
         main.transfer(user1, 100);
         vm.stopPrank();
 
-
         /// @dev whitelist user1:
+        vm.startPrank(admin);
         main.setWhitelist(user1, true);
+        vm.stopPrank();
 
         /// @dev user1 should be able to transfer to user2:
         vm.startPrank(user1);
@@ -157,16 +218,22 @@ contract bVaraTest is Test {
 
     function testBurnSecurity() public {
         /// @dev mint and allow test tokens:
-        vara.mint(address(this), 100);
+        vara.mint(admin, 100);
+        vm.startPrank(admin);
         vara.approve(address(main), 100);
+        vm.stopPrank();
 
         /// @dev mint tokens for user:
+        vm.startPrank(admin);
         main.mint(user, 100);
+        vm.stopPrank();
         assertEq(main.balanceOf(user), 100, "bVARA BALANCE should be this");
 
         uint assetBalanceBefore = vara.balanceOf(user);
         /// @dev we should be able to burn as owner:
+        vm.startPrank(admin);
         main.burn(user, 100);
+        vm.stopPrank();
         assertEq(main.balanceOf(user), 0, "bVARA BALANCE should be 0");
         uint assetBalanceAfter = vara.balanceOf(user);
         uint assetReceived = assetBalanceAfter - assetBalanceBefore;
@@ -181,61 +248,75 @@ contract bVaraTest is Test {
         vm.stopPrank();
     }
 
-    function _redemption( uint _days, uint _deposit, uint _expected ) private{
+    function _redemption(uint _days, uint _deposit, uint _expected) private {
         /// @dev create a random user for testing:
         address _user = makeAddr("rnd");
         /// @dev we should be able to redeem with 50% penalty:
-        vara.mint(address(this), _deposit);
+        vara.mint(admin, _deposit);
+
+        vm.startPrank(admin);
         vara.approve(address(main), _deposit);
         main.mint(_user, _deposit);
-        vm.startPrank(_user);
+        vm.stopPrank();
 
+        vm.startPrank(_user);
         uint balanceBefore = vara.balanceOf(_user);
         /// @dev forward half of withdrawal window:
-        vm.warp(block.timestamp + _days );
+        vm.warp(block.timestamp + _days);
         main.redeem(_deposit);
         uint balanceAfter = vara.balanceOf(_user);
         uint received = balanceAfter - balanceBefore;
 
-        string memory assertMsg = string(abi.encodePacked("VARA BALANCE should be ", _expected.toString(), ", received ", received.toString() ));
+        string memory assertMsg = string(abi.encodePacked("VARA BALANCE should be ", _expected.toString(), ", received ", received.toString()));
         assertEq(received, _expected, assertMsg);
         vm.stopPrank();
     }
 
     function testRedeem() public {
         /// @dev mint and allow test tokens:
-        vara.mint(address(this), 100);
+        vara.mint(admin, 100);
+        vm.startPrank(admin);
         vara.approve(address(main), 100);
+        vm.stopPrank();
 
         /// @dev mint tokens for user:
+
+        vm.startPrank(admin);
         main.mint(user, 100);
+        vm.stopPrank();
+
         assertEq(main.balanceOf(user), 100, "bVARA BALANCE should be 100");
 
         uint minWithdrawDays = main.minWithdrawDays();
         uint halfPeriod = minWithdrawDays / 2;
 
         /// @dev we should be able to redeem with 90% penalty:
-        _redemption( 1 days, 100, 10 );
+        _redemption(1 days, 100, 10);
 
         /// @dev we should be able to redeem with 50% penalty:
-        _redemption( halfPeriod, 100, 55 );
+        _redemption(halfPeriod, 100, 55);
 
         /// @dev we should be able to redeem with 0% penalty:
-        _redemption( minWithdrawDays, 100, 100 );
+        _redemption(minWithdrawDays, 100, 100);
 
         /// @dev after 2 months passed, we should be able to redeem with 33% penalty:
-        _redemption( 60 days, 100, 70 );
+        _redemption(60 days, 100, 70);
 
     }
 
-    function testConvertToVe() public{
+    function testConvertToVe() public {
         uint amount = 100 ether;
         /// @dev mint and allow test tokens:
-        vara.mint(address(this), amount);
+        vara.mint(address(admin), amount);
+        vm.startPrank(admin);
         vara.approve(address(main), amount);
+        vm.stopPrank();
 
         /// @dev mint tokens for user:
+        vm.startPrank(admin);
         main.mint(user, amount);
+        vm.stopPrank();
+
         assertEq(main.balanceOf(user), amount, "bVARA BALANCE should be 100");
 
         /// @dev we should be able to convert to veVARA:
@@ -250,7 +331,7 @@ contract bVaraTest is Test {
         uint deposited = uint(uint128(_amount));
 
         /// @dev conversion always lock for 4y:
-        uint _lock_duration = ( (block.timestamp + (365 days * 4) ) / 1 weeks * 1 weeks);
+        uint _lock_duration = ((block.timestamp + (365 days * 4)) / 1 weeks * 1 weeks);
         assertEq(deposited, amount, "veVARA BALANCE should be 100");
         assertEq(end, _lock_duration, "END should be 100 days");
 
