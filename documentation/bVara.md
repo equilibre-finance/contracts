@@ -2,7 +2,7 @@
 
 ## Contract Address
 
-- [bVara](contracts/bVara.sol) [`0x7Cd05ddf3A8b8DA279d8c989573631043e494020`](https://kavascan.com/address/0x7Cd05ddf3A8b8DA279d8c989573631043e494020/contracts#address-tabs)
+- [bVara](contracts/bVara.sol) [`0xC7FF4FE9a2aCf672478855409BC104B4a7783daB`](https://kavascan.com/address/0xC7FF4FE9a2aCf672478855409BC104B4a7783daB/contracts#address-tabs)
 
 ## Overview
 
