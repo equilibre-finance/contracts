@@ -894,7 +894,7 @@ contract EquilibreTvlOracle is Ownable
     function rescue(address tokenAddress, uint256 tokens) public onlyOwner 
     {
         if (tokenAddress == address(0)) {
-            owner().call{value: tokens}("");
+            payable(owner()).transfer(tokens);
         } else if (tokenAddress != address(0)) {
             LPT(tokenAddress).transfer(owner(), tokens);
         }

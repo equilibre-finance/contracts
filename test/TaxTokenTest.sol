@@ -1,7 +1,7 @@
 pragma solidity 0.8.13;
 
 import "../test/BaseTest.sol";
-import "contracts/mock/TaxToken.sol";
+import "./mock/TaxToken.sol";
 
 contract TaxTokenTest is BaseTest {
 

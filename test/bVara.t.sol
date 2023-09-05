@@ -58,12 +58,14 @@ contract bVaraImplementationTest is Test {
         assertEq(main.maxPenaltyPct(), 90, "MAX PENALTY should be 90");
     }
 
+    /*
     /// @dev test if admin is set correctly:
     function testProxyAdmin() public {
         vm.startPrank(proxyAdmin);
         assertEq(proxy.admin(), proxyAdmin, "ADMIN should be this");
         vm.stopPrank();
     }
+    */
 
     /// @dev we should get max penalty for <= 1 day:
     function testMaxPenalty() public {

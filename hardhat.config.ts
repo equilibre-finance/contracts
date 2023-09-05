@@ -35,6 +35,9 @@ task("create-wallet", "Create a wallet")
 const config: HardhatUserConfig = {
     defaultNetwork: "hardhat",
     networks: {
+        localhost: {
+            url: "http://localhost:8545",
+        },
         hardhat: {
             forking: {
                 url: process.env.RPC_MAINNET as string,

@@ -8,11 +8,11 @@ async function main() {
     const balance = await deployer.getBalance();
     console.log("Account balance:", hre.ethers.utils.formatEther(balance), "ETH");
 
-    const veClaimAllFees = await hre.ethers.getContractFactory("veClaimAllFees")
+    const ClaimAllImplementation = await hre.ethers.getContractFactory("ClaimAllImplementation")
 
-    const main = await veClaimAllFees.deploy();
+    const main = await ClaimAllImplementation.deploy();
     await main.deployed();
-    console.log('veClaimAllFees', main.address);
+    console.log('ClaimAllImplementation', main.address);
 
     /// @dev load tester signer private key for testing:
     const wallet = new hre.ethers.Wallet(process.env.PRIVATE_KEY_DEV, hre.ethers.provider);

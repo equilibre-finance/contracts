@@ -1,5 +1,5 @@
 import cfg from "./constants/mainnet-config";
-import allContracts from "../contracts";
+import allContracts from "../contracts.json";
 
 interface IContract {
     Vara: string;

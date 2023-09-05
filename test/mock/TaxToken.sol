@@ -60,7 +60,7 @@ contract TaxToken is Context, IERC20, Ownable {
         inSwapAndLiquify = false;
     }
 
-    constructor ( address mintSupplyTo ) public {
+    constructor ( address mintSupplyTo ) {
         _rOwned[mintSupplyTo] = _rTotal;
 
         //exclude owner and this contract from fee

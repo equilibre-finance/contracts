@@ -14,4 +14,5 @@ interface IVoter {
     function distribute(address _gauge) external;
     function gauges(address _gauge) external view returns (address);
     function claimFees(address[] memory _fees, address[][] memory _tokens, uint _tokenId) external;
+    function claimRewards(address[] memory _gauges, address[][] memory _tokens) external;
 }

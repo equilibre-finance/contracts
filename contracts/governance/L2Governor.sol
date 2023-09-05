@@ -598,15 +598,15 @@ abstract contract L2Governor is Context, ERC165, EIP712, IGovernor, IERC721Recei
         return this.onERC1155BatchReceived.selector;
     }
 
-    function proposalProposer(uint256 proposalId) public view  returns (address){
+    function proposalProposer(uint256 proposalId) public view override returns (address){
         return _proposals[proposalId].proposer;
     }
 
-    function clock() public  view returns (uint48) {
+    function clock() public override view returns (uint48) {
         return uint48(block.timestamp);
     }
 
-    function CLOCK_MODE() public  view returns (string memory) {
+    function CLOCK_MODE() public override view returns (string memory) {
         return "mode=timestamp";
     }
 
@@ -615,7 +615,7 @@ abstract contract L2Governor is Context, ERC165, EIP712, IGovernor, IERC721Recei
         uint256[] memory values,
         bytes[] memory calldatas,
         bytes32 descriptionHash
-    ) public  returns (uint256 proposalId) {
+    ) public override returns (uint256 proposalId) {
         require(false, "disabled");
         proposalId;
     }

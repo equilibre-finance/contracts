@@ -2,9 +2,9 @@ import hre from "hardhat";
 
 async function main() {
     const address: string = '0x0B36b950aC8F71cAcE4c67B3872183483480dD19';
-    const veClaimAllFees = await hre.ethers.getContractFactory("veClaimAllFees")
-    const veClaimAllFeesContract = await veClaimAllFees.attach(address);
-    const tx = await veClaimAllFeesContract.setMaxClaimPerTx(100);
+    const ClaimAllImplementation = await hre.ethers.getContractFactory("ClaimAllImplementation")
+    const ClaimAllImplementationContract = await ClaimAllImplementation.attach(address);
+    const tx = await ClaimAllImplementationContract.setMaxClaimPerTx(100);
     console.log(tx);
 }
 

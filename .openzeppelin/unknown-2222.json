@@ -29,6 +29,26 @@
       "address": "0x9d8054aaf108A5B5fb9fE27F89F3Db11E82fc94F",
       "txHash": "0xac2592f101db75096c6c19dee7014d7c0d2bbe5e5a3844fcceae19fedaba7f96",
       "kind": "transparent"
+    },
+    {
+      "address": "0x8122Dc5afeC0698022842E0275aD84263BD46852",
+      "txHash": "0x7edeffa5c6a68d4a8bb19e5b6a7df523409df408c7aa85cca6a804f058bccbc6",
+      "kind": "transparent"
+    },
+    {
+      "address": "0x7b2530F5A0bE9C02Ee760e2aB7DA84A57160bF1C",
+      "txHash": "0x418d2acb8d205facc45cf0587a81d3ecab89e774c32b4203c2a622c5788d6ba8",
+      "kind": "transparent"
+    },
+    {
+      "address": "0x15aeE697732868D5E9b423ee623e16c60bA2ce8D",
+      "txHash": "0x040c35b4ec219329b7ae7e758798e17267788d2a6c9d61bf6833aa31c9c87b82",
+      "kind": "transparent"
+    },
+    {
+      "address": "0x9f80f639Ff87BE7299Eec54a08dB20dB3b3a4171",
+      "txHash": "0xc2993c37db11e752ccb62ed3229d1853dfb132d6d83d3220daf4d5f537f47a7f",
+      "kind": "transparent"
     }
   ],
   "impls": {
@@ -368,6 +388,154 @@
           "t_uint64": {
             "label": "uint64",
             "numberOfBytes": "8"
+          },
+          "t_uint8": {
+            "label": "uint8",
+            "numberOfBytes": "1"
+          }
+        }
+      }
+    },
+    "f51a125368c1248b539503c460c5a7d51cb00ec8528d63bb07dbf27919b48777": {
+      "address": "0xd8B15215c2d1E72ec293bA99576a8F15f44B4C8b",
+      "txHash": "0xdd03f5a42158cbe9c1e30a63a77f66e1ab78005417efdaf46eedfcc4b5ee5bc6",
+      "layout": {
+        "solcVersion": "0.8.13",
+        "storage": [
+          {
+            "label": "_initialized",
+            "offset": 0,
+            "slot": "0",
+            "type": "t_uint8",
+            "contract": "Initializable",
+            "src": "@openzeppelin\\contracts-upgradeable\\proxy\\utils\\Initializable.sol:63",
+            "retypedFrom": "bool"
+          },
+          {
+            "label": "_initializing",
+            "offset": 1,
+            "slot": "0",
+            "type": "t_bool",
+            "contract": "Initializable",
+            "src": "@openzeppelin\\contracts-upgradeable\\proxy\\utils\\Initializable.sol:68"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "1",
+            "type": "t_array(t_uint256)50_storage",
+            "contract": "ContextUpgradeable",
+            "src": "@openzeppelin\\contracts-upgradeable\\utils\\ContextUpgradeable.sol:36"
+          },
+          {
+            "label": "_owner",
+            "offset": 0,
+            "slot": "51",
+            "type": "t_address",
+            "contract": "OwnableUpgradeable",
+            "src": "@openzeppelin\\contracts-upgradeable\\access\\OwnableUpgradeable.sol:22"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "52",
+            "type": "t_array(t_uint256)49_storage",
+            "contract": "OwnableUpgradeable",
+            "src": "@openzeppelin\\contracts-upgradeable\\access\\OwnableUpgradeable.sol:94"
+          },
+          {
+            "label": "ve",
+            "offset": 0,
+            "slot": "101",
+            "type": "t_contract(IVotingEscrow)1601",
+            "contract": "ClaimAllImplementation",
+            "src": "contracts\\ClaimAllImplementation.sol:26"
+          },
+          {
+            "label": "voter",
+            "offset": 0,
+            "slot": "102",
+            "type": "t_contract(IVoter)1423",
+            "contract": "ClaimAllImplementation",
+            "src": "contracts\\ClaimAllImplementation.sol:27"
+          },
+          {
+            "label": "pairFactory",
+            "offset": 0,
+            "slot": "103",
+            "type": "t_contract(IPairFactory)1304",
+            "contract": "ClaimAllImplementation",
+            "src": "contracts\\ClaimAllImplementation.sol:28"
+          },
+          {
+            "label": "rewards",
+            "offset": 0,
+            "slot": "104",
+            "type": "t_contract(IRewardsDistributor)1327",
+            "contract": "ClaimAllImplementation",
+            "src": "contracts\\ClaimAllImplementation.sol:29"
+          },
+          {
+            "label": "autoClaimAddresses",
+            "offset": 0,
+            "slot": "105",
+            "type": "t_array(t_address)dyn_storage",
+            "contract": "ClaimAllImplementation",
+            "src": "contracts\\ClaimAllImplementation.sol:47"
+          },
+          {
+            "label": "autoClaimStatus",
+            "offset": 0,
+            "slot": "106",
+            "type": "t_mapping(t_address,t_bool)",
+            "contract": "ClaimAllImplementation",
+            "src": "contracts\\ClaimAllImplementation.sol:50"
+          }
+        ],
+        "types": {
+          "t_address": {
+            "label": "address",
+            "numberOfBytes": "20"
+          },
+          "t_array(t_address)dyn_storage": {
+            "label": "address[]",
+            "numberOfBytes": "32"
+          },
+          "t_array(t_uint256)49_storage": {
+            "label": "uint256[49]",
+            "numberOfBytes": "1568"
+          },
+          "t_array(t_uint256)50_storage": {
+            "label": "uint256[50]",
+            "numberOfBytes": "1600"
+          },
+          "t_bool": {
+            "label": "bool",
+            "numberOfBytes": "1"
+          },
+          "t_contract(IPairFactory)1304": {
+            "label": "contract IPairFactory",
+            "numberOfBytes": "20"
+          },
+          "t_contract(IRewardsDistributor)1327": {
+            "label": "contract IRewardsDistributor",
+            "numberOfBytes": "20"
+          },
+          "t_contract(IVoter)1423": {
+            "label": "contract IVoter",
+            "numberOfBytes": "20"
+          },
+          "t_contract(IVotingEscrow)1601": {
+            "label": "contract IVotingEscrow",
+            "numberOfBytes": "20"
+          },
+          "t_mapping(t_address,t_bool)": {
+            "label": "mapping(address => bool)",
+            "numberOfBytes": "32"
+          },
+          "t_uint256": {
+            "label": "uint256",
+            "numberOfBytes": "32"
           },
           "t_uint8": {
             "label": "uint8",

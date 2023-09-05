@@ -1,5 +1,5 @@
 
-import allContracts from "./contracts";
+import allContracts from "./contracts.json";
 import {task} from "hardhat/config";
 import mainet from "./scripts/constants/mainnet-config";
 import fs from "fs";

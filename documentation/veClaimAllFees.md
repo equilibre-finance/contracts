@@ -1,27 +1,55 @@
-# veClaimAllFees
+# claim
 
 ## Contract Address
 
-- [veClaimAllFees](contracts/veClaimAllFees.sol) [`0xbb47f033f7A5352F523795E1b9fc595D100DEa05`](https://kavascan.com/address/0xbb47f033f7A5352F523795E1b9fc595D100DEa05/contracts#address-tabs)
+- [claim](contracts/ClaimAllImplementation.sol) [`0x9f80f639Ff87BE7299Eec54a08dB20dB3b3a4171`](https://kavascan.com/address/0x9f80f639Ff87BE7299Eec54a08dB20dB3b3a4171/contracts#address-tabs)
 
 ## Overview
 
-The veClaimAllFees contract is designed to allow users to claim all fees from all bribe 
-contracts using a single transaction. This contract is used to subsidize the gas fees 
-for the users that are in the auto-claim list.
+The `claim` contract is designed to:
 
-## Implementing claimAllByTokenId in a React Application
+- allow users to claim all fees from all bribe contracts using a single transaction. 
+- claim all rewards from reabase from all tokenId's using a single transaction.
 
-Make sure the contract is approved to spend the tokenId's passed as argument, the contract
-will check if the user has approved the contract to spend the tokenId's before claiming,
-if the contract is not approved, the claim will revert with `NotApproved` event.
+Also, the contract can be used to subsidize the gas fees for the users that are in the auto-claim list.
 
-Call the claimAllByTokenId function with the tokenId's as argument, the contract will
-run until all possible max gas is used, after, you need to check the 
-`lastClaimedIndex` view passing the tokenId as argument, it will return the amount
-bribes claimed, then you compare with the total amount of bribes in the contract calling
-`bribesLength` to know how many bribes are left to claim, if the `lastClaimedIndex` is
-equal to the `bribesLength` it means that all bribes were claimed.
+## Implementing claimFees in a React Application
+
+Function ABI signature:
+
+```
+function claimFees(address[] memory _fees, address[][] memory _tokens, uint _tokenId)
+```
+
+- **approve the `claim` contract**: the user needs to approve the `claim` 
+  contract to process the fees from the bribe contracts, it betters to call 
+  `setApprovalForAll` from `VotingEscrow` contract, because the user can claim 
+  all tokenIds in a single transaction via `claimAllByTokenId` function.
+- **build list of bribes with rewards**:
+  - get a list of all pools available in the `PairFactory` contract calling the `allPairsLength` function.
+  - get a list of all gauges by pools calling the `gauges` function in `Voter` contract.
+  - get a list of all bribes by gauges calling the `internal_bribe` and 
+    `external_bribe` functions in each `Gauge` contract, if the gauge address is different from 0x0.
+  - now, on each bribe, call `earned` to know if there is a any reward for 
+    this user on this bribe.
+  - if there is a reward, add the bribe address to the list of bribes and the 
+    token address to the list of tokens.
+  - now you can call claimFees function passing the list of bribes and 
+    tokens by this tokenId.
+    
+
+## Implementing claimRewards in a React Application
+
+Function ABI signature:
+
+```
+function claimRewards(address _address)
+```
+
+This function you to claim all rewards of each tokenId from rebase.
+
+As this function auto adds all claimed rewards to each token id, it does not 
+need approval, just call the function passing the user address as argument.
 
 ## Adding tokenId to the auto-claim backend process
 
@@ -31,450 +59,14 @@ the tokenId to the `autoClaimAddresses` list, to add an user, just call the
 `addToAutoClaimAddresses` function passing the user id as argument, after, the user
 does not need to call the `claimAllByTokenId` function, the backend will claim for him.
 
-You can know if an user is in the auto-claim list calling the `autoClaimStatus` view
+You can know if a user is in the auto-claim list calling the `autoClaimStatus` view
 passing the user address as argument, it will return true if the user is in the list.
 
 ## API to know the auto-claim user status
+
+Attention: not implemented yet.
 
 To see the progress of the auto-claim process, you can call the following endpoints:
 - https://votingescrow.equilibrefinance.com/api/v1/auto-claim/status/0xADDRESS: returns the status of the user in the auto-claim list
 - https://votingescrow.equilibrefinance.com/api/v1/auto-claim/token/1: returns the progress of the auto-claim process for tokenId 1.
 
-## ABI
-
-```
-[
-    {
-      "inputs": [
-        {
-          "internalType": "uint256",
-          "name": "tokenId",
-          "type": "uint256"
-        }
-      ],
-      "name": "InvalidTokenId",
-      "type": "error"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "owner",
-          "type": "address"
-        },
-        {
-          "internalType": "address",
-          "name": "operator",
-          "type": "address"
-        },
-        {
-          "internalType": "uint256",
-          "name": "tokenId",
-          "type": "uint256"
-        }
-      ],
-      "name": "NotApproved",
-      "type": "error"
-    },
-    {
-      "inputs": [],
-      "name": "NotAuthorized",
-      "type": "error"
-    },
-    {
-      "inputs": [],
-      "name": "UserExists",
-      "type": "error"
-    },
-    {
-      "inputs": [],
-      "name": "UserNtFound",
-      "type": "error"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
-          "indexed": false,
-          "internalType": "uint256",
-          "name": "tokenId",
-          "type": "uint256"
-        },
-        {
-          "indexed": false,
-          "internalType": "address",
-          "name": "bribe",
-          "type": "address"
-        },
-        {
-          "indexed": false,
-          "internalType": "address",
-          "name": "token",
-          "type": "address"
-        },
-        {
-          "indexed": false,
-          "internalType": "uint256",
-          "name": "amount",
-          "type": "uint256"
-        },
-        {
-          "indexed": false,
-          "internalType": "string",
-          "name": "symbol",
-          "type": "string"
-        }
-      ],
-      "name": "ClaimFees",
-      "type": "event"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
-          "indexed": true,
-          "internalType": "address",
-          "name": "previousOwner",
-          "type": "address"
-        },
-        {
-          "indexed": true,
-          "internalType": "address",
-          "name": "newOwner",
-          "type": "address"
-        }
-      ],
-      "name": "OwnershipTransferred",
-      "type": "event"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "user",
-          "type": "address"
-        }
-      ],
-      "name": "addToAutoClaimAddresses",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "allPairsLength",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "name": "autoClaimAddresses",
-      "outputs": [
-        {
-          "internalType": "address",
-          "name": "",
-          "type": "address"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "autoClaimAddressesLength",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "",
-          "type": "address"
-        }
-      ],
-      "name": "autoClaimStatus",
-      "outputs": [
-        {
-          "internalType": "bool",
-          "name": "",
-          "type": "bool"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "name": "bribes",
-      "outputs": [
-        {
-          "internalType": "address",
-          "name": "",
-          "type": "address"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "bribesLength",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "uint256",
-          "name": "tokenId",
-          "type": "uint256"
-        }
-      ],
-      "name": "claimAllByTokenId",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "name": "gauges",
-      "outputs": [
-        {
-          "internalType": "address",
-          "name": "",
-          "type": "address"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "gaugesLength",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "getAllUsers",
-      "outputs": [
-        {
-          "internalType": "address[]",
-          "name": "",
-          "type": "address[]"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "name": "lastClaimedIndex",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "needToSyncGauges",
-      "outputs": [
-        {
-          "internalType": "bool",
-          "name": "",
-          "type": "bool"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "owner",
-      "outputs": [
-        {
-          "internalType": "address",
-          "name": "",
-          "type": "address"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "pairFactory",
-      "outputs": [
-        {
-          "internalType": "contract IPairFactory",
-          "name": "",
-          "type": "address"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "user",
-          "type": "address"
-        }
-      ],
-      "name": "removeFromAutoClaimAddresses",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "renounceOwnership",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        },
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "name": "rewardsByBribe",
-      "outputs": [
-        {
-          "internalType": "address",
-          "name": "",
-          "type": "address"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "syncBribes",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "syncGauges",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "syncRewards",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "newOwner",
-          "type": "address"
-        }
-      ],
-      "name": "transferOwnership",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "ve",
-      "outputs": [
-        {
-          "internalType": "contract IVotingEscrow",
-          "name": "",
-          "type": "address"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "voter",
-      "outputs": [
-        {
-          "internalType": "contract IVoter",
-          "name": "",
-          "type": "address"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    }
-  ]
-```

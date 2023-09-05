@@ -1,4 +1,4 @@
-import "../interfaces/IERC20.sol";
+import "contracts/interfaces/IERC20.sol";
 // SPDX-License-Identifier: Unlicensed
 pragma solidity ^0.8.9;
 
