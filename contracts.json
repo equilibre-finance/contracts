@@ -62,8 +62,10 @@
         "EquilibreTvlOracle": "0xB4fc5AE2eD3cd403C85bea490d4181E404019A5C",
         "Equilibre_VE_Api": "0x2d17395C3b033eF1823f9E5b5eF2F454fA462f74",
         "ClaimAllImplementation": {
-            "proxyAddress": "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9",
-            "implementationAddress": "0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9"
+            "proxyAddress": "0x9f80f639Ff87BE7299Eec54a08dB20dB3b3a4171"
+        },
+        "bVaraImplementation": {
+            "proxyAddress": "0x9d8054aaf108A5B5fb9fE27F89F3Db11E82fc94F"
         }
     }
 }

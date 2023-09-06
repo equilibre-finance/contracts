@@ -2,7 +2,7 @@
 args.js
 foundry-local.toml
 .env
-
+foundry.toml
 # Foundry
 cache/
 out/

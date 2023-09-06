@@ -8,42 +8,111 @@ import {bVaraImplementation} from "contracts/bVaraImplementation.sol";
 import {ERC20} from 'lib/solmate/src/tokens/ERC20.sol';
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {VotingEscrow} from "contracts/VotingEscrow.sol";
-import {TransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import {Voter} from "contracts/Voter.sol";
+import {TransparentUpgradeableProxy, ITransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import {ProxyAdmin} from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
+import {InternalBribe} from "contracts/InternalBribe.sol";
+import {ExternalBribe} from "contracts/ExternalBribe.sol";
+import {Gauge} from "contracts/Gauge.sol";
 
+import "forge-std/StdStorage.sol";
 
 contract bVaraImplementationTest is Test {
+    using stdStorage for StdStorage;
     using Strings for uint256;
     Vara private vara;
     bVaraImplementation private main;
     bVaraImplementation private implementation;
     VotingEscrow private ve;
-    TransparentUpgradeableProxy proxy;
+    Voter private voter;
+    TransparentUpgradeableProxy private proxy;
+    ProxyAdmin private proxyAdmin;
 
     /// @dev the admin address only for proxy upgrade:
-    address private proxyAdmin = address(0x52B9Ff6f13ca7A871a7112d2a3912adc07F054c4);
+    address private proxyAdminAddress = address(0x52B9Ff6f13ca7A871a7112d2a3912adc07F054c4);
     address private admin = address(0x7cef2432A2690168Fb8eb7118A74d5f8EfF9Ef55);
     address private user = makeAddr("user");
 
-    function setUp() public {
-        vara = new Vara();
-        ve = new VotingEscrow(address(vara), address(0));
+    address private votingEscrow = 0x35361C9c2a324F5FB8f3aed2d7bA91CE1410893A;
+    address private voterAddress = 0x4eB2B9768da9Ea26E3aBe605c9040bC12F236a59;
+    address private varaAddress = 0xE1da44C0dA55B075aE8E2e4b6986AdC76Ac77d73;
+    address private bVaraProxyAddress = 0x9d8054aaf108A5B5fb9fE27F89F3Db11E82fc94F;
 
-        /// @dev deploy the implementation:
-        implementation = new bVaraImplementation();
+    Gauge private gauge;
+    ExternalBribe private bribe;
+    address private poolAddress;
+    address private gaugeAddress;
+
+    function writeTokenBalance(address who, address token, uint256 amt) internal {
+        stdstore
+        .target(token)
+        .sig(ERC20(token).balanceOf.selector)
+        .with_key(who)
+        .checked_write(amt);
+    }
+
+    function warp(uint ttl) public {
+        vm.warp(block.timestamp + ttl + 1);
+        vm.roll(block.number + 1);
+    }
+
+    function setUp() public {
+
+        // fork mainnet:
+        vm.createSelectFork("mainnet", 6_358_000);
+        assertEq(2222, block.chainid, "INVALID FORK NETWORK ID");
+
+        vara = Vara(varaAddress);
+        voter = Voter(voterAddress);
+        ve = VotingEscrow(votingEscrow);
+        proxyAdmin = new ProxyAdmin();
 
         /// @dev deploy proxy:
+        implementation = new bVaraImplementation();
         bytes memory _data = abi.encodeWithSignature("initialize(address,address)", address(vara), address(ve));
-        main = bVaraImplementation(address(proxy = new TransparentUpgradeableProxy(address(implementation), proxyAdmin, _data)));
-
-        /// @dev transfer contract to admin:
+        main = bVaraImplementation(address(proxy = new TransparentUpgradeableProxy(address(implementation), address(proxyAdmin), _data)));
+        // @dev transfer contract to admin:
         main.transferOwnership(address(admin));
 
+        /// @dev upgrade contract to:
+        /*
+        implementation = new bVaraImplementation();
+        ITransparentUpgradeableProxy _proxy = ITransparentUpgradeableProxy(bVaraProxyAddress);
+        vm.startPrank(proxyAdminAddress);
+        //_proxy.upgradeTo(address(implementation));
+        vm.stopPrank();
+        main = bVaraImplementation(address(_proxy));
+        */
+
+        /// @dev whitelist admin, so admin can bribe:
+        vm.startPrank(address(admin));
+        main.setWhitelist(address(admin), true);
+        vm.stopPrank();
+
+        /// @dev let's vote:
+        poolAddress = voter.pools(0);
+        gaugeAddress = voter.gauges(poolAddress);
+
+        gauge = Gauge(gaugeAddress);
+        bribe = ExternalBribe(gauge.external_bribe());
+
+        /// @dev: whitelist the bribe or user will not be able to claim:
+        vm.startPrank(address(admin));
+        main.setWhitelist(address(bribe), true);
+        vm.stopPrank();
+
+        /// @dev approve and add reward to bribe as bVara:
+        address governor = voter.governor();
+        vm.startPrank(governor);
+        voter.whitelist(address(main));
+        assertEq(voter.isWhitelisted(address(main)), true, "bVARA SHOULD BE WHITELISTED");
+        vm.stopPrank();
     }
 
     /// @dev test if revert when user try to deposit into implementation:
     function testDepositRevert() public {
         /// @dev mint and allow test tokens:
-        vara.mint(admin, 100);
+        writeTokenBalance(admin, address(vara), 1_000_000 ether ); // (admin, 100);
         vara.approve(address(implementation), 100);
 
 
@@ -58,47 +127,38 @@ contract bVaraImplementationTest is Test {
         assertEq(main.maxPenaltyPct(), 90, "MAX PENALTY should be 90");
     }
 
-    /*
-    /// @dev test if admin is set correctly:
-    function testProxyAdmin() public {
-        vm.startPrank(proxyAdmin);
-        assertEq(proxy.admin(), proxyAdmin, "ADMIN should be this");
-        vm.stopPrank();
-    }
-    */
-
-    /// @dev we should get max penalty for <= 1 day:
-    function testMaxPenalty() public {
-        uint penalty = main.maxPenaltyPct();
-        assertEq(main.penalty(1 days), penalty, "MAX PENALTY should be 90");
-    }
-
-    /// @dev for 2 months passed, we should get only 30% penalty:
+    /// @dev for 2/3 passed, we should get only 33% penalty:
     function test2MonthsPassedPenalty() public {
-        uint penalty = 30;
-        uint twoMonthsPassed = 60 days;
-        assertEq(main.penalty(twoMonthsPassed), penalty, "2 MONTHS PASSED PENALTY should be 67");
+        uint fullPeriod = main.minWithdrawDays();
+        uint vestEnd = fullPeriod - (fullPeriod / 3 * 2);
+        uint vestEndAt = block.timestamp + vestEnd;
+        (uint256 _received,) = main.penalty(block.timestamp, vestEndAt, 100);
+        assertEq(_received, 67, "2 MONTHS PASSED PENALTY should be 66");
     }
 
     /// @dev we should get 50% penalty for 45 days:
     function test50pctPenalty() public {
-        uint penalty = main.maxPenaltyPct() / 2;
-        uint halfPeriod = main.minWithdrawDays() / 2;
-        assertEq(main.penalty(halfPeriod), penalty, "HALF PENALTY should be 45");
+        (uint256 _received,) = main.penalty(block.timestamp, block.timestamp + 45 days, 100);
+        assertEq(_received, 50, "HALF PENALTY should be 50");
     }
 
     /// @dev we should get 0% penalty for 90 days:
     function testMinPenalty() public {
-        uint penalty = 0;
+        (uint256 _received,) = main.penalty(block.timestamp, block.timestamp, 100);
+        assertEq(_received, 100, "MIN PENALTY should be 100");
+    }
+    /// @dev we should get max penalty for <= 1 day:
+    function testMaxPenalty() public {
         uint fullPeriod = main.minWithdrawDays();
-        assertEq(main.penalty(fullPeriod), penalty, "MIN PENALTY should be 0");
+        (uint256 _received,) = main.penalty(block.timestamp, block.timestamp + fullPeriod, 100);
+        assertEq(_received, 10, "MAX PENALTY should be 10");
     }
 
     /// @dev we should get 0% penalty after 90 days:
     function testNoPenalty() public {
-        uint penalty = 0;
         uint fullPeriod = main.minWithdrawDays() + 1;
-        assertEq(main.penalty(fullPeriod), penalty, "NO PENALTY should be 0");
+        (uint256 _received,) = main.penalty(block.timestamp, fullPeriod, 100);
+        assertEq(_received, 100, "NO PENALTY should be 100");
     }
 
     function testEndpointSetup() public {
@@ -149,7 +209,7 @@ contract bVaraImplementationTest is Test {
     function testMintSecurity() public {
         /// @dev mint and allow test tokens:
 
-        vara.mint(admin, 100);
+        writeTokenBalance(admin, address(vara), 1_000_000 ether); // (admin, 100);
         vm.startPrank(admin);
         vara.approve(address(main), 100);
         vm.stopPrank();
@@ -170,7 +230,7 @@ contract bVaraImplementationTest is Test {
     /// @dev test mint to users:
     function testMintToUser() public {
         /// @dev mint and allow test tokens:
-        vara.mint(admin, 100);
+        writeTokenBalance(admin, address(vara), 1_000_000 ether); // (admin, 100);
         vm.startPrank(admin);
         vara.approve(address(main), 100);
         vm.stopPrank();
@@ -184,26 +244,30 @@ contract bVaraImplementationTest is Test {
 
     /// @dev test user transfers:
     function testUserTransfer() public {
+
+        uint amount = 100 ether;
+        writeTokenBalance(admin, address(vara), 1_000_000 ether);
+
         /// @dev create some users for transfer testing:
         address user1 = makeAddr("user1");
         address user2 = makeAddr("user2");
 
         /// @dev mint and allow test tokens:
-        vara.mint(admin, 100);
+        writeTokenBalance(admin, address(vara), 1_000_000 ether); // (admin, amount);
         vm.startPrank(admin);
-        vara.approve(address(main), 100);
+        vara.approve(address(main), amount);
         vm.stopPrank();
 
         /// @dev we should be able to mint as owner:
         vm.startPrank(admin);
-        main.mint(user1, 100);
+        main.mint(user1, amount);
         vm.stopPrank();
-        assertEq(main.balanceOf(user1), 100, "bVARA BALANCE should be this");
+        assertEq(main.balanceOf(user1), amount, "bVARA BALANCE should be this");
 
         /// @dev should revert if not whitelisted:
         vm.startPrank(user1);
         vm.expectRevert(abi.encodePacked(bVaraImplementation.NonWhiteListed.selector));
-        main.transfer(user1, 100);
+        main.transfer(user1, amount);
         vm.stopPrank();
 
         /// @dev whitelist user1:
@@ -213,48 +277,15 @@ contract bVaraImplementationTest is Test {
 
         /// @dev user1 should be able to transfer to user2:
         vm.startPrank(user1);
-        main.transfer(user2, 100);
-        assertEq(main.balanceOf(user2), 100, "bVARA BALANCE should be this");
-        vm.stopPrank();
-    }
-
-    function testBurnSecurity() public {
-        /// @dev mint and allow test tokens:
-        vara.mint(admin, 100);
-        vm.startPrank(admin);
-        vara.approve(address(main), 100);
-        vm.stopPrank();
-
-        /// @dev mint tokens for user:
-        vm.startPrank(admin);
-        main.mint(user, 100);
-        vm.stopPrank();
-        assertEq(main.balanceOf(user), 100, "bVARA BALANCE should be this");
-
-        uint assetBalanceBefore = vara.balanceOf(user);
-        /// @dev we should be able to burn as owner:
-        vm.startPrank(admin);
-        main.burn(user, 100);
-        vm.stopPrank();
-        assertEq(main.balanceOf(user), 0, "bVARA BALANCE should be 0");
-        uint assetBalanceAfter = vara.balanceOf(user);
-        uint assetReceived = assetBalanceAfter - assetBalanceBefore;
-        assertEq(assetReceived, 100, "VARA BALANCE should be 100");
-
-        /// @dev asset balance should be 0:
-
-        /// @dev we should not be able to burn as non-owner:
-        vm.startPrank(user);
-        vm.expectRevert(abi.encodePacked("Ownable: caller is not the owner"));
-        main.burn(user, 100);
+        main.transfer(user2, amount);
+        assertEq(main.balanceOf(user2), amount, "bVARA BALANCE should be this");
         vm.stopPrank();
     }
 
     function _redemption(uint _days, uint _deposit, uint _expected) private {
+        //console2.log("_redemption", _days, _deposit, _expected);
         /// @dev create a random user for testing:
         address _user = makeAddr("rnd");
-        /// @dev we should be able to redeem with 50% penalty:
-        vara.mint(admin, _deposit);
 
         vm.startPrank(admin);
         vara.approve(address(main), _deposit);
@@ -262,54 +293,55 @@ contract bVaraImplementationTest is Test {
         vm.stopPrank();
 
         vm.startPrank(_user);
-        uint balanceBefore = vara.balanceOf(_user);
-        /// @dev forward half of withdrawal window:
-        vm.warp(block.timestamp + _days);
-        main.redeem(_deposit);
-        uint balanceAfter = vara.balanceOf(_user);
-        uint received = balanceAfter - balanceBefore;
+        uint balanceBefore = main.balanceOf(_user);
+        assertEq(balanceBefore, _deposit, "VARA BALANCE should be 100");
 
-        string memory assertMsg = string(abi.encodePacked("VARA BALANCE should be ", _expected.toString(), ", received ", received.toString()));
-        assertEq(received, _expected, assertMsg);
+        /// @dev first, we vest:
+        uint vestId = main.vest(balanceBefore);
+
+        /// @dev forward half of withdrawal window:
+        warp(_days);
+        (uint _received,) = main.redeem(vestId);
+
         vm.stopPrank();
+
+        uint daysPassed = _days / 1 days;
+        string memory assertMsg = string(abi.encodePacked("For ",daysPassed.toString()," days, expected should be ", _expected.toString(), ", received ", _received.toString()));
+        assertEq(_received, _expected, assertMsg);
+
     }
 
     function testRedeem() public {
         /// @dev mint and allow test tokens:
-        vara.mint(admin, 100);
+        uint amount = 100;
+        writeTokenBalance(admin, address(vara), 1_000_000 ether);
         vm.startPrank(admin);
-        vara.approve(address(main), 100);
+        vara.approve(address(main), amount);
+        main.mint(user, amount);
         vm.stopPrank();
 
-        /// @dev mint tokens for user:
-
-        vm.startPrank(admin);
-        main.mint(user, 100);
-        vm.stopPrank();
-
-        assertEq(main.balanceOf(user), 100, "bVARA BALANCE should be 100");
+        assertEq(main.balanceOf(user), amount, "bVARA BALANCE should be 100");
 
         uint minWithdrawDays = main.minWithdrawDays();
         uint halfPeriod = minWithdrawDays / 2;
 
         /// @dev we should be able to redeem with 90% penalty:
-        _redemption(1 days, 100, 10);
+        _redemption(1 days, amount, 10);
 
         /// @dev we should be able to redeem with 50% penalty:
-        _redemption(halfPeriod, 100, 55);
+        _redemption(halfPeriod, amount, 51);
 
         /// @dev we should be able to redeem with 0% penalty:
-        _redemption(minWithdrawDays, 100, 100);
+        _redemption(minWithdrawDays, amount, 100);
 
         /// @dev after 2 months passed, we should be able to redeem with 33% penalty:
-        _redemption(60 days, 100, 70);
+        _redemption(60 days, amount, 67);
 
     }
 
     function testConvertToVe() public {
-        uint amount = 100 ether;
+        uint amount = vara.balanceOf(admin);
         /// @dev mint and allow test tokens:
-        vara.mint(address(admin), amount);
         vm.startPrank(admin);
         vara.approve(address(main), amount);
         vm.stopPrank();
@@ -337,6 +369,192 @@ contract bVaraImplementationTest is Test {
         assertEq(deposited, amount, "veVARA BALANCE should be 100");
         assertEq(end, _lock_duration, "END should be 100 days");
 
+    }
+
+    function testVest() public {
+        /// @dev mint and allow test tokens:
+        uint amount = vara.balanceOf(admin);
+        assertGt(amount, 0, "VARA BALANCE should be > 0");
+        vm.startPrank(admin);
+        vara.approve(address(main), amount);
+        vm.stopPrank();
+
+        /// @dev mint tokens for user:
+        vm.startPrank(admin);
+        main.mint(user, amount);
+        vm.stopPrank();
+
+        amount = main.balanceOf(user);
+        assertGt(amount, 0, "bVARA BALANCE should be > 0");
+
+        /// @dev conversion always lock for 4y:
+        vm.startPrank(address(user));
+        uint vestID = main.vest(amount);
+        vm.stopPrank();
+
+        uint getVestLength = main.getVestLength(user);
+        assertEq(getVestLength, 1, "VEST LENGTH should be 1");
+
+        bVaraImplementation.VestPosition[] memory vestInfo = main.getAllVestInfo(user);
+        assertEq(vestInfo[0].amount, amount, "VEST AMOUNT should be 100");
+        assertEq(vestInfo[0].exitIn, 0, "VEST EXIT IN should be 0");
+        assertEq(vestInfo[0].vestID, vestID, "VEST ID should be 0");
+
+
+    }
+
+    function testCancelVest() public {
+        /// @dev mint and allow test tokens:
+        uint amount = vara.balanceOf(admin);
+        assertGt(amount, 0, "VARA BALANCE should be > 0");
+        vm.startPrank(admin);
+        vara.approve(address(main), amount);
+        vm.stopPrank();
+
+        /// @dev mint tokens for user:
+        vm.startPrank(admin);
+        main.mint(user, amount);
+        vm.stopPrank();
+
+        amount = main.balanceOf(user);
+        assertGt(amount, 0, "bVARA BALANCE should be > 0");
+
+        /// @dev conversion always lock for 4y:
+        vm.startPrank(address(user));
+        uint vestID = main.vest(amount);
+        vm.stopPrank();
+
+        warp(30 days);
+
+        vm.startPrank(address(user));
+        main.cancelVest(vestID);
+        vm.stopPrank();
+
+        /// @dev user balance should be the same:
+        assertEq(main.balanceOf(user), amount, "bVARA BALANCE should be 100");
+
+        bVaraImplementation.VestPosition[] memory vestInfo = main.getAllVestInfo(user);
+        assertGt(vestInfo[0].exitIn, 0, "VEST EXIT IN should be gt 0");
+
+        /// @dev should revert if try a new cancel:
+        vm.startPrank(address(user));
+        vm.expectRevert();
+        main.cancelVest(vestID);
+        vm.stopPrank();
+
+    }
+
+    function testVestExitSecurity() public {
+        /// @dev mint and allow test tokens:
+        uint amount = vara.balanceOf(admin);
+        assertGt(amount, 0, "VARA BALANCE should be > 0");
+        vm.startPrank(admin);
+        vara.approve(address(main), amount);
+        vm.stopPrank();
+
+        /// @dev mint tokens for user:
+        vm.startPrank(admin);
+        main.mint(user, amount);
+        vm.stopPrank();
+
+        amount = main.balanceOf(user);
+        assertGt(amount, 0, "bVARA BALANCE should be > 0");
+
+        /// @dev conversion always lock for 4y:
+        vm.startPrank(address(user));
+        main.vest(amount);
+        vm.stopPrank();
+
+        warp(30 days);
+
+        /// @dev should revert if try to convert to ve:
+        vm.startPrank(address(user));
+        vm.expectRevert();
+        main.convertToVe(amount);
+        vm.stopPrank();
+
+    }
+
+
+    function testExternalBribeAndClaim() public {
+
+        /// @dev mint and allow test tokens:
+        uint fullBalance = vara.balanceOf(admin);
+        assertGt(fullBalance, 0, "VARA BALANCE should be > 0 FOR ADMIN");
+        uint amount = fullBalance / 2;
+        assertGt(amount, 0, "VARA BALANCE should be > 0");
+        vm.startPrank(admin);
+        vara.approve(address(main), amount);
+        main.mint(user, amount);
+        amount = main.balanceOf(user);
+        assertGt(amount, 0, "bVARA BALANCE should be > 0");
+        vm.stopPrank();
+
+        /// @dev conversion always lock for 4y:
+        vm.startPrank(address(user));
+        uint tokenId = main.convertToVe(amount);
+        assertGt(tokenId, 0, "TOKEN ID should be > 0");
+        vm.stopPrank();
+
+        /// @dev approve and add reward to bribe as bVara:
+        vm.startPrank(address(admin));
+        uint bribedAmount = vara.balanceOf(admin);
+        assertGt(bribedAmount, 0, "VARA BALANCE should be > 0 TO BRIBE");
+        vara.approve(address(main), bribedAmount);
+        main.mint(admin, bribedAmount);
+
+        bribedAmount = main.balanceOf(address(admin));
+        main.approve(address(bribe), bribedAmount);
+        assertGt(bribedAmount, 0, "bVARA BALANCE should be > 0 TO BRIBE");
+        bribe.notifyRewardAmount(address(main), bribedAmount);
+        assertEq(main.balanceOf(address(bribe)), bribedAmount, "bVARA BALANCE INCORRECT IN THE BRIBE");
+
+        vm.stopPrank();
+
+        /// @dev do a voter:
+        address[] memory _poolVote = new address[](1);
+        _poolVote[0] = poolAddress;
+        uint256[] memory _weights = new uint256[](1);
+        _weights[0] = 5000;
+        vm.startPrank(address(user));
+        voter.vote(tokenId, _poolVote, _weights);
+        vm.stopPrank();
+
+        /// @dev check user rewards:
+
+        // fwd half a week
+        warp(1 weeks);
+        uint256 pre = main.balanceOf(address(user));
+        vm.startPrank(address(user));
+        address[] memory _bribes = new address[](1);
+        address[][] memory _tokens = new address[][](1);
+
+        _bribes[0] = address(bribe);
+        _tokens[0] = new address[](1);
+        _tokens[0][0] = address(main);
+
+        voter.claimBribes(_bribes, _tokens, tokenId);
+        vm.stopPrank();
+        uint256 post = main.balanceOf(address(user));
+        assertGt(post - pre, 0, "bVARA BALANCE should be > 0");
+
+    }
+
+    /// @dev test the vest day during 100 days:
+    function testVestDay() public view{
+        uint minWithdrawDays = main.minWithdrawDays() / 1 days;
+        uint amount = 100;
+        for(uint i = minWithdrawDays; i > 0; i--) {
+            uint vestEnd = i * 1 days;
+            uint vestEndAt = block.timestamp + vestEnd;
+            (uint256 _received,) = main.penalty(block.timestamp, vestEndAt, amount);
+            console2.log("vest end in ", i, " days, received ", _received);
+        }
+    }
+
+    function testPassedPeriod() public{
+        (uint256 _received,) = main.penalty(block.timestamp + 1 days, block.timestamp, 100);
+        assertEq(_received, 100, "NO PENALTY should be 100");
     }
 
 }

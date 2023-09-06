@@ -46,11 +46,11 @@ const config: HardhatUserConfig = {
         },
         mainnet: {
             url: process.env.RPC_MAINNET as string,
-            accounts: [process.env.PRIVATE_KEY!]
+            accounts: [process.env.PRIVATE_KEY!, process.env.PROXY_ADMIN_PRIVATE_KEY!]
         },
         testnet: {
             url: process.env.RPC_TESTNET as string,
-            accounts: [process.env.PRIVATE_KEY!]
+            accounts: [process.env.PRIVATE_KEY!, process.env.PROXY_ADMIN_PRIVATE_KEY!]
         }
     },
     solidity: {

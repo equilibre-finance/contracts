@@ -27,12 +27,31 @@ contract bVaraImplementation is Initializable, OFTUpgradeable
     mapping(address => uint) public lastMint;
 
     event WhiteList(address indexed _addr, bool _status);
-    event Redeemed(address indexed _addr, uint256 _amount, uint256 _redeemAmount);
+    event Redeemed(address indexed _addr, uint vestID, uint256 _amount, uint256 _redeemAmount);
 
     error NonWhiteListed();
     error InsufficientBalance();
     error InsufficientAllowance();
 
+    // upgrade v2
+    error VestingPositionNotFound(address user, uint256 vestId);
+    error VestingPositionAlreadyExists();
+
+    event NewVest(address indexed _addr, uint256 _vestID, uint256 _amount);
+    event Exit(address indexed _addr, uint256 _vestID, uint256 _amount);
+
+    struct VestPosition {
+        uint256 amount; // amount of bVara
+        uint256 start;  // start unix timestamp
+        uint256 maxEnd; // start + maxVest (end timestamp)
+        uint256 vestID; // vest identifier (starting from 0)
+        uint256 exitIn;
+    }
+
+    /// @dev map of vesting positions for each user:
+    mapping(address => VestPosition[]) public vestInfo;
+
+/*
     function initialize( ERC20 _asset, address _ve ) initializer public {
 
         __OFTUpgradeable_init("bVara Token", "bVARA", address(0));
@@ -53,20 +72,7 @@ contract bVaraImplementation is Initializable, OFTUpgradeable
         emit WhiteList(address(0), true);
 
     }
-
-    // @dev determine the penalty for withdrawing before the withdrawal window:
-    function penalty(uint256 secs) public view returns (uint256 pct) {
-
-        /// @dev max penalty if <= than 1 day:
-        if (secs <= 1 days) return maxPenaltyPct;
-
-        /// @dev no penalty if >= than minWithdrawDays:
-        if (secs >= minWithdrawDays) return 0;
-
-        /// @dev calculate penalty % on time decay:
-        pct = maxPenaltyPct - (maxPenaltyPct * secs / minWithdrawDays);
-
-    }
+*/
 
     // @dev sets the LZ endpoint anytime if we need it:
     function setEndpoint(address _endpoint) public onlyOwner {
@@ -105,40 +111,91 @@ contract bVaraImplementation is Initializable, OFTUpgradeable
 
         /// @dev update last mint timestamp for penalty calculation:
         lastMint[_to] = block.timestamp;
+    }
+
+    /// @dev vest an amount to exit later:
+    function vest(uint _amount) public returns (uint256 vestID) {
+
+        address user = _msgSender();
+
+        /// @dev check if user has enough balance:
+        if (balanceOf(user) < _amount)
+            revert InsufficientBalance();
+
+        /// @dev to avoid user trying to convert same amount to veToken:
+        ///      we burn bVara while user is in the queue:
+        _burn(user, _amount);
+
+        /// @dev add vesting position:
+        vestID = vestInfo[user].length;
+        vestInfo[user].push(
+            VestPosition(
+                _amount,
+                block.timestamp,
+                block.timestamp + minWithdrawDays,
+                vestID,
+                0
+            )
+        );
+
+        emit NewVest(user, vestID, _amount);
+
 
     }
 
-    /// @dev admin can burn tokens and transfer asset to _to:
-    function burn(address _from, uint256 _amount) public onlyOwner {
+    /// @dev exit an vested position and get back bVara:
+    function cancelVest(uint256 vestID) public {
 
-        /// @dev burn bToken:
-        _burn(_from, _amount);
+        address user = _msgSender();
 
-        /// @dev transfer asset to _to:
-        SafeTransferLib.safeTransfer(asset, _from, _amount);
+        if (vestInfo[user][vestID].exitIn != 0)
+            revert VestingPositionAlreadyExists();
+
+        /// @dev update vesting position to avoid reentrancy:
+        vestInfo[user][vestID].exitIn = block.timestamp;
+
+        uint amount = vestInfo[user][vestID].amount;
+
+        /// @dev mint the bToken back to user:
+        _mint(user, amount);
+
+        emit Exit(user, vestID, amount);
 
     }
 
     /// @dev compute penalty amount for _amount of bToken:
-    function computePenaltyRedemption(address user, uint256 _amount) public view returns (uint256 _penaltyAmount) {
-        uint256 secs = block.timestamp - lastMint[user];
-        uint256 _penalty = penalty(secs);
-        _penaltyAmount = _amount - (_amount * _penalty / 100);
+    function penalty(uint timestamp, uint256 vestEndAt, uint256 _amount) public view returns (uint256 _received, uint256 _pct) {
+        if (timestamp >= vestEndAt) return (_amount, 0);
+        _pct = 100 - (( (vestEndAt - timestamp) * 100) / minWithdrawDays);
+        _pct = _pct < 10 ? 10 : _pct;
+        _received = _amount * _pct / 100;
     }
-
     /// @dev redeem bToken for asset with penalty check:
-    function redeem(uint256 _amount) public {
+    function redeem(uint256 vestID) public returns (uint256 _received, uint256 _pct) {
+
+        address user = _msgSender();
+
+        /// @dev prevent reentrancy:
+        if (vestInfo[user][vestID].exitIn != 0)
+            revert VestingPositionAlreadyExists();
 
         /// @dev check penalty:
-        uint256 _redeemAmount = computePenaltyRedemption(_msgSender(), _amount);
+        uint256 _amount = vestInfo[user][vestID].amount;
+        uint256 vestEndAt = vestInfo[user][vestID].maxEnd;
 
-        /// @dev burn bToken:
-        _burn(_msgSender(), _amount);
+        if (_amount == 0) revert VestingPositionNotFound(user, vestID);
+
+        (_received, _pct) = penalty(block.timestamp, vestEndAt, _amount);
+
+        /// @dev update vesting position to avoid reentrancy:
+        vestInfo[user][vestID].exitIn = block.timestamp;
+
+        /// @dev we already burned bToken when user entered the queue:
 
         /// @dev transfer asset to msg sender:
-        SafeTransferLib.safeTransfer(asset, _msgSender(), _redeemAmount);
+        SafeTransferLib.safeTransfer(asset, user, _received);
 
-        emit Redeemed(_msgSender(), _amount, _redeemAmount);
+        emit Redeemed(user, vestID, _amount, _received);
     }
 
     /// @dev convert bVARA to veVARA:
@@ -156,7 +213,7 @@ contract bVaraImplementation is Initializable, OFTUpgradeable
         asset.approve(address(ve), _amount);
 
         /// @dev conversion always lock for 4y:
-        uint _lock_duration = ( (block.timestamp + (365 days * 4) ) / 1 weeks * 1 weeks) - 1;
+        uint _lock_duration = ((4 * 365 days) / 1 weeks * 1 weeks) - 1;
         return ve.create_lock_for(_amount, _lock_duration, _msgSender());
 
     }
@@ -169,4 +226,23 @@ contract bVaraImplementation is Initializable, OFTUpgradeable
         }
     }
 
+    /// @dev get the queue of vested positions of an address:
+    function getVestLength(address user) public view returns (uint256) {
+        return vestInfo[user].length;
+    }
+
+    /// @dev get the queue of vested positions of an address:
+    function getAllVestInfo(address user) public view returns (VestPosition[] memory) {
+        return vestInfo[user];
+    }
+
+    /// @dev get the vesting position of an address:
+    function getVestInfo(address user, uint256 vestID) public view returns (VestPosition memory) {
+        return vestInfo[user][vestID];
+    }
+
+    /// @dev get the vesting position of an address:
+    function balanceOfVestId(address user, uint256 vestID) public view returns (uint256) {
+        return vestInfo[user][vestID].amount;
+    }
 }

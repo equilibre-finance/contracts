@@ -1,6 +1,0 @@
-[profile.default]
-src = 'contracts'
-out = 'artifacts'
-[rpc_endpoints]
-mainnet = 'https://evm.kava.io/'
-testnet = 'https://evm.testnet.kava.io/'
