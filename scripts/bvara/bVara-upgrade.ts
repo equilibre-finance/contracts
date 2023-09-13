@@ -1,4 +1,4 @@
-import { upgrade } from "./deploymentLib";
+import { upgrade } from "../lib/deploymentLib";
 async function main() {
     await upgrade("bVaraImplementation", []);
 }

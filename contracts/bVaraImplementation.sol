@@ -8,6 +8,8 @@ import {ERC20} from '../lib/solmate/src/tokens/ERC20.sol';
 import {SafeTransferLib} from "../lib/solmate/src/utils/SafeTransferLib.sol";
 import {IVotingEscrow} from "contracts/interfaces/IVotingEscrow.sol";
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import {IVoter} from "contracts/interfaces/IVoter.sol";
+import {IWrappedExternalBribeFactory} from "contracts/interfaces/IWrappedExternalBribeFactory.sol";
 
 //import {console2} from "forge-std/console2.sol";
 
@@ -50,7 +52,7 @@ contract bVaraImplementation is Initializable, OFTUpgradeable
 
     /// @dev map of vesting positions for each user:
     mapping(address => VestPosition[]) public vestInfo;
-
+    address public treasureAddress;
 /*
     function initialize( ERC20 _asset, address _ve ) initializer public {
 
@@ -191,9 +193,12 @@ contract bVaraImplementation is Initializable, OFTUpgradeable
         vestInfo[user][vestID].exitIn = block.timestamp;
 
         /// @dev we already burned bToken when user entered the queue:
-
         /// @dev transfer asset to msg sender:
         SafeTransferLib.safeTransfer(asset, user, _received);
+
+        /// @dev set left amount to the treasure address:
+        if( treasureAddress != address(0) )
+            SafeTransferLib.safeTransfer(asset, treasureAddress, _amount - _received);
 
         emit Redeemed(user, vestID, _amount, _received);
     }
@@ -244,5 +249,24 @@ contract bVaraImplementation is Initializable, OFTUpgradeable
     /// @dev get the vesting position of an address:
     function balanceOfVestId(address user, uint256 vestID) public view returns (uint256) {
         return vestInfo[user][vestID].amount;
+    }
+    function setTreasureAddress(address _treasureAddress) public onlyOwner {
+        treasureAddress = _treasureAddress;
+    }
+    function whitelistBribes() external {
+        IVoter voter = IVoter(0x4eB2B9768da9Ea26E3aBe605c9040bC12F236a59);
+        IWrappedExternalBribeFactory wrappedFactory = IWrappedExternalBribeFactory(0x8af2f4Ae1DA95556fC1DaC3A74Cbf2E05e7006ab);
+        uint t = voter.length();
+        for(uint i = 0; i < t; i++){
+            address gaugeAddress = voter.gauges(voter.pools(i));
+            if( gaugeAddress != address(0) ){
+                // IGauge gauge = IGauge(gaugeAddress);
+                address bribe = voter.external_bribes(gaugeAddress);
+                address wrapped = wrappedFactory.oldBribeToNew(bribe);
+                bool isAlive = voter.isAlive(gaugeAddress);
+                whiteList[bribe] = isAlive;
+                whiteList[wrapped] = isAlive;
+            }
+        }
     }
 }

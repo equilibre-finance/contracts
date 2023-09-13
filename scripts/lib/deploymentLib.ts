@@ -17,8 +17,8 @@ async function deploy(name: string, args: any[], verify: boolean = true) {
         throw new Error(`Insufficient funds in ${deployer.address}! You have: ${fundsInEther} ETH`);
     }
 
-    const ClaimAllImplementation = await ethers.getContractFactory(name);
-    const main = await upgrades.deployProxy(ClaimAllImplementation, args);
+    const implementation = await ethers.getContractFactory(name);
+    const main = await upgrades.deployProxy(implementation, args);
     const proxyAddress = await main.getAddress();
     console.log(`${name} deployed to ${proxyAddress} at ${networkName} (${networkId})`);
 
@@ -77,8 +77,8 @@ async function upgrade(name: string, args: any[], verify: boolean = true) {
     const proxyAddress = contractInfo[networkId][name].proxyAddress;
 
     try {
-        const ClaimAllImplementation = await ethers.getContractFactory(name, deployer);
-        await upgrades.upgradeProxy(proxyAddress, ClaimAllImplementation, args);
+        const implementation = await ethers.getContractFactory(name, deployer);
+        await upgrades.upgradeProxy(proxyAddress, implementation, args);
         console.log(`${name} upgradeProxy ${proxyAddress} at ${networkName} (${networkId})`);
     }catch(e){
         console.log(e.toString());

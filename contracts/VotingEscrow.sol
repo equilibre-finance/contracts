@@ -121,7 +121,6 @@ contract VotingEscrow is Initializable, IERC721Upgradeable, IERC721MetadataUpgra
     /// @dev reentrancy guard
     uint8 internal constant _not_entered = 1;
     uint8 internal constant _entered = 2;
-    uint8 internal _entered_state = 1;
     modifier nonreentrant() {
         require(_entered_state == _not_entered);
         _entered_state = _entered;
