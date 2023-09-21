@@ -39,5 +39,7 @@ interface IVotingEscrow {
     function getApproved(uint) external view returns (address);
 
     function locked(uint) external view returns (int128, uint);
-
+    function locked__end(uint) external view returns (uint);
+    function increase_amount(uint, uint) external;
+    function increase_unlock_time(uint, uint) external;
 }
