@@ -166,14 +166,24 @@ contract bVaraImplementation is Initializable, OFTUpgradeable
     }
 
     /// @dev compute penalty amount for _amount of bToken:
-    function penalty(uint timestamp, uint256 vestEndAt, uint256 _amount) public view returns (uint256 _received, uint256 _pct) {
-        if (timestamp >= vestEndAt) return (_amount, 0);
-        _pct = 100 - (( (vestEndAt - timestamp) * 100) / minWithdrawDays);
-        _pct = _pct < 10 ? 10 : _pct;
-        _received = _amount * _pct / 100;
+    function penalty(uint timestamp, uint256 vestStartAt, uint256 vestEndAt, uint256 _amount) public view
+    returns (uint256 _received, uint256 _pct, uint256 _days)
+    {
+        if (timestamp >= vestEndAt) return (_amount, 0, 0);
+        /// @dev use a larger denominator to avoid rounding errors:
+        uint d = 10_000;
+        uint md = 1_000;
+        _days = (vestEndAt - timestamp) / 1 days;
+        /// @dev check if vesting period is less than epoch:
+        _pct = (timestamp - vestStartAt < 1 weeks) ? md :
+            d - (( (vestEndAt - timestamp) * d) / minWithdrawDays);
+        _received = (_amount * _pct / d);
+        /// @dev invert the _pct value to display correctly in the UI:
+        _pct = d - ( (_received * d) / _amount );
     }
+
     /// @dev redeem bToken for asset with penalty check:
-    function redeem(uint256 vestID) public returns (uint256 _received, uint256 _pct) {
+    function redeem(uint256 vestID) public returns (uint256 _received, uint256 _pct, uint256 _days) {
 
         address user = _msgSender();
 
@@ -184,10 +194,11 @@ contract bVaraImplementation is Initializable, OFTUpgradeable
         /// @dev check penalty:
         uint256 _amount = vestInfo[user][vestID].amount;
         uint256 vestEndAt = vestInfo[user][vestID].maxEnd;
+        uint256 vestStartAt = vestInfo[user][vestID].start;
 
         if (_amount == 0) revert VestingPositionNotFound(user, vestID);
 
-        (_received, _pct) = penalty(block.timestamp, vestEndAt, _amount);
+        (_received, _pct, _days) = penalty(block.timestamp, vestStartAt, vestEndAt, _amount);
 
         /// @dev update vesting position to avoid reentrancy:
         vestInfo[user][vestID].exitIn = block.timestamp;
@@ -197,7 +208,7 @@ contract bVaraImplementation is Initializable, OFTUpgradeable
         SafeTransferLib.safeTransfer(asset, user, _received);
 
         /// @dev set left amount to the treasure address:
-        if( treasureAddress != address(0) )
+        if (treasureAddress != address(0))
             SafeTransferLib.safeTransfer(asset, treasureAddress, _amount - _received);
 
         emit Redeemed(user, vestID, _amount, _received);
@@ -250,16 +261,18 @@ contract bVaraImplementation is Initializable, OFTUpgradeable
     function balanceOfVestId(address user, uint256 vestID) public view returns (uint256) {
         return vestInfo[user][vestID].amount;
     }
+
     function setTreasureAddress(address _treasureAddress) public onlyOwner {
         treasureAddress = _treasureAddress;
     }
+
     function whitelistBribes() external {
         IVoter voter = IVoter(0x4eB2B9768da9Ea26E3aBe605c9040bC12F236a59);
         IWrappedExternalBribeFactory wrappedFactory = IWrappedExternalBribeFactory(0x8af2f4Ae1DA95556fC1DaC3A74Cbf2E05e7006ab);
         uint t = voter.length();
-        for(uint i = 0; i < t; i++){
+        for (uint i = 0; i < t; i++) {
             address gaugeAddress = voter.gauges(voter.pools(i));
-            if( gaugeAddress != address(0) ){
+            if (gaugeAddress != address(0)) {
                 // IGauge gauge = IGauge(gaugeAddress);
                 address bribe = voter.external_bribes(gaugeAddress);
                 address wrapped = wrappedFactory.oldBribeToNew(bribe);
@@ -268,5 +281,28 @@ contract bVaraImplementation is Initializable, OFTUpgradeable
                 whiteList[wrapped] = isAlive;
             }
         }
+    }
+
+    /// @dev convert bVARA to veVARA and add to an existing position:
+    function addToVe(uint256 _tokenId, uint256 _amount) public {
+
+        /// @dev check balance:
+        if (balanceOf(_msgSender()) < _amount) {
+            revert InsufficientBalance();
+        }
+
+        /// @dev burn bToken:
+        _burn(_msgSender(), _amount);
+
+        /// @dev mint veToken:
+        asset.approve(address(ve), _amount);
+
+        /// @dev let's compute time left for 4y:
+        uint _lock_duration = ((4 * 365 days) / 1 weeks * 1 weeks) - 1;
+        ve.increase_unlock_time(_tokenId, _lock_duration);
+
+        /// @dev let's add to an existing position:
+        ve.increase_amount(_tokenId, _amount);
+
     }
 }

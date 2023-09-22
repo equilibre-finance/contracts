@@ -59,7 +59,7 @@ contract bVaraImplementationTest is Test {
     function setUp() public {
 
         // fork mainnet:
-        vm.createSelectFork("mainnet", 6_358_000);
+        vm.createSelectFork("https://evm.data.equilibre.kava.io", 6_576_250);
         assertEq(2222, block.chainid, "INVALID FORK NETWORK ID");
 
         vara = Vara(varaAddress);
@@ -69,20 +69,10 @@ contract bVaraImplementationTest is Test {
 
         /// @dev deploy proxy:
         implementation = new bVaraImplementation();
-        bytes memory _data = abi.encodeWithSignature("initialize(address,address)", address(vara), address(ve));
+        bytes memory _data = abi.encodeWithSignature("initialize(address,address)", ERC20(address(vara)), address(ve));
         main = bVaraImplementation(address(proxy = new TransparentUpgradeableProxy(address(implementation), address(proxyAdmin), _data)));
         // @dev transfer contract to admin:
         main.transferOwnership(address(admin));
-
-        /// @dev upgrade contract to:
-        /*
-        implementation = new bVaraImplementation();
-        ITransparentUpgradeableProxy _proxy = ITransparentUpgradeableProxy(bVaraProxyAddress);
-        vm.startPrank(proxyAdminAddress);
-        //_proxy.upgradeTo(address(implementation));
-        vm.stopPrank();
-        main = bVaraImplementation(address(_proxy));
-        */
 
         /// @dev whitelist admin, so admin can bribe:
         vm.startPrank(address(admin));
@@ -129,35 +119,38 @@ contract bVaraImplementationTest is Test {
 
     /// @dev for 2/3 passed, we should get only 33% penalty:
     function test2MonthsPassedPenalty() public {
-        uint fullPeriod = main.minWithdrawDays();
-        uint vestEnd = fullPeriod - (fullPeriod / 3 * 2);
-        uint vestEndAt = block.timestamp + vestEnd;
-        (uint256 _received,) = main.penalty(block.timestamp, vestEndAt, 100);
-        assertEq(_received, 67, "2 MONTHS PASSED PENALTY should be 66");
+        uint startAt = block.timestamp;
+        uint endsAt = startAt + 90 days;
+        warp(60 days);
+        (uint256 _received,,) = main.penalty(block.timestamp, startAt, endsAt, 100 ether);
+        assertEq(_received, 66_67e16, "HALF PENALTY should be 66.6");
     }
 
     /// @dev we should get 50% penalty for 45 days:
     function test50pctPenalty() public {
-        (uint256 _received,) = main.penalty(block.timestamp, block.timestamp + 45 days, 100);
-        assertEq(_received, 50, "HALF PENALTY should be 50");
+        uint startAt = block.timestamp;
+        uint endsAt = startAt + 90 days;
+        warp(45 days);
+        (uint256 _received,,) = main.penalty(block.timestamp, startAt, endsAt, 100 ether);
+        assertEq(_received, 50_01e16, "HALF PENALTY should be 50");
     }
 
     /// @dev we should get 0% penalty for 90 days:
     function testMinPenalty() public {
-        (uint256 _received,) = main.penalty(block.timestamp, block.timestamp, 100);
+        (uint256 _received,,) = main.penalty(block.timestamp, block.timestamp, block.timestamp, 100);
         assertEq(_received, 100, "MIN PENALTY should be 100");
     }
     /// @dev we should get max penalty for <= 1 day:
     function testMaxPenalty() public {
         uint fullPeriod = main.minWithdrawDays();
-        (uint256 _received,) = main.penalty(block.timestamp, block.timestamp + fullPeriod, 100);
+        (uint256 _received,,) = main.penalty(block.timestamp, block.timestamp, block.timestamp + fullPeriod, 100);
         assertEq(_received, 10, "MAX PENALTY should be 10");
     }
 
     /// @dev we should get 0% penalty after 90 days:
     function testNoPenalty() public {
         uint fullPeriod = main.minWithdrawDays() + 1;
-        (uint256 _received,) = main.penalty(block.timestamp, fullPeriod, 100);
+        (uint256 _received,,) = main.penalty(block.timestamp, block.timestamp, fullPeriod, 100);
         assertEq(_received, 100, "NO PENALTY should be 100");
     }
 
@@ -280,63 +273,6 @@ contract bVaraImplementationTest is Test {
         main.transfer(user2, amount);
         assertEq(main.balanceOf(user2), amount, "bVARA BALANCE should be this");
         vm.stopPrank();
-    }
-
-    function _redemption(uint _days, uint _deposit, uint _expected) private {
-        //console2.log("_redemption", _days, _deposit, _expected);
-        /// @dev create a random user for testing:
-        address _user = makeAddr("rnd");
-
-        vm.startPrank(admin);
-        vara.approve(address(main), _deposit);
-        main.mint(_user, _deposit);
-        vm.stopPrank();
-
-        vm.startPrank(_user);
-        uint balanceBefore = main.balanceOf(_user);
-        assertEq(balanceBefore, _deposit, "VARA BALANCE should be 100");
-
-        /// @dev first, we vest:
-        uint vestId = main.vest(balanceBefore);
-
-        /// @dev forward half of withdrawal window:
-        warp(_days);
-        (uint _received,) = main.redeem(vestId);
-
-        vm.stopPrank();
-
-        uint daysPassed = _days / 1 days;
-        string memory assertMsg = string(abi.encodePacked("For ",daysPassed.toString()," days, expected should be ", _expected.toString(), ", received ", _received.toString()));
-        assertEq(_received, _expected, assertMsg);
-
-    }
-
-    function testRedeem() public {
-        /// @dev mint and allow test tokens:
-        uint amount = 100;
-        writeTokenBalance(admin, address(vara), 1_000_000 ether);
-        vm.startPrank(admin);
-        vara.approve(address(main), amount);
-        main.mint(user, amount);
-        vm.stopPrank();
-
-        assertEq(main.balanceOf(user), amount, "bVARA BALANCE should be 100");
-
-        uint minWithdrawDays = main.minWithdrawDays();
-        uint halfPeriod = minWithdrawDays / 2;
-
-        /// @dev we should be able to redeem with 90% penalty:
-        _redemption(1 days, amount, 10);
-
-        /// @dev we should be able to redeem with 50% penalty:
-        _redemption(halfPeriod, amount, 51);
-
-        /// @dev we should be able to redeem with 0% penalty:
-        _redemption(minWithdrawDays, amount, 100);
-
-        /// @dev after 2 months passed, we should be able to redeem with 33% penalty:
-        _redemption(60 days, amount, 67);
-
     }
 
     function testConvertToVe() public {
@@ -541,20 +477,142 @@ contract bVaraImplementationTest is Test {
     }
 
     /// @dev test the vest day during 100 days:
+    /*
     function testVestDay() public view{
         uint minWithdrawDays = main.minWithdrawDays() / 1 days;
         uint amount = 100;
         for(uint i = minWithdrawDays; i > 0; i--) {
             uint vestEnd = i * 1 days;
             uint vestEndAt = block.timestamp + vestEnd;
-            (uint256 _received,) = main.penalty(block.timestamp, vestEndAt, amount);
+            (uint256 _received,,) = main.penalty(block.timestamp, block.timestamp, vestEndAt, amount);
             console2.log("vest end in ", i, " days, received ", _received);
         }
     }
+    */
 
     function testPassedPeriod() public{
-        (uint256 _received,) = main.penalty(block.timestamp + 1 days, block.timestamp, 100);
+        (uint256 _received,,) = main.penalty(block.timestamp + 1 days, block.timestamp, block.timestamp, 100);
         assertEq(_received, 100, "NO PENALTY should be 100");
     }
 
+
+    function _redemption(uint _days, uint _deposit, uint _expected) private {
+        _days;
+        //console2.log("_redemption", _days, _deposit, _expected);
+        /// @dev create a random user for testing:
+        address _user = makeAddr("rnd");
+
+        vm.startPrank(admin);
+        vara.approve(address(main), _deposit);
+        main.mint(_user, _deposit);
+        vm.stopPrank();
+
+        vm.startPrank(_user);
+        uint balanceBefore = main.balanceOf(_user);
+        assertEq(balanceBefore, _deposit, "VARA BALANCE should be 100");
+
+        /// @dev first, we vest:
+        uint vestId = main.vest(balanceBefore);
+
+        /// @dev forward half of withdrawal window:
+        warp(_days);
+        (uint _received, ,) = main.redeem(vestId);
+
+        vm.stopPrank();
+
+        uint daysPassed = _days / 1 days;
+        string memory assertMsg = string(abi.encodePacked(" Redemption: for ",daysPassed.toString()," days, expected should be ", (_expected/1e18).toString(), ", received ", (_received/1e18).toString()));
+        console2.log(assertMsg);
+        assertEq(_received, _expected, assertMsg);
+
+    }
+
+    function testRedeem() public {
+        /// @dev mint and allow test tokens:
+        uint amount = 100 ether;
+        writeTokenBalance(admin, address(vara), 1_000_000 ether);
+        vm.startPrank(admin);
+        vara.approve(address(main), amount);
+        main.mint(user, amount);
+        vm.stopPrank();
+
+        assertEq(main.balanceOf(user), amount, "bVARA BALANCE should be 100");
+
+        uint minWithdrawDays = main.minWithdrawDays();
+        uint halfPeriod = minWithdrawDays / 2;
+
+        /// @dev we should be able to redeem with 90% penalty:
+        _redemption(1 days, amount, 10 ether);
+
+        /// @dev we should be able to redeem with 50% penalty:
+        _redemption(halfPeriod, amount, 50_01e16);
+
+        /// @dev we should be able to redeem with 0% penalty:
+        _redemption(minWithdrawDays, amount, 100 ether);
+
+        /// @dev after 2 months passed, we should be able to redeem with 33% penalty:
+        _redemption(60 days, amount, 66_67e16);
+
+    }
+
+    function testAddToVe() public {
+        uint total = vara.balanceOf(admin);
+        uint amount = total / 2;
+        /// @dev mint and allow test tokens:
+        vm.startPrank(admin);
+        vara.approve(address(main), total);
+        vm.stopPrank();
+
+        /// @dev mint tokens for user:
+        vm.startPrank(admin);
+        main.mint(user, amount);
+        vm.stopPrank();
+
+        assertEq(main.balanceOf(user), amount, "bVARA BALANCE should be 100");
+
+        /// @dev we should be able to convert to veVARA:
+        vm.startPrank(user);
+        uint tokenId = main.convertToVe(amount);
+        vm.stopPrank();
+
+        assertEq(main.balanceOf(user), 0, "bVARA BALANCE should be 0");
+        assertEq(ve.ownerOf(tokenId), user, "OWNER should be user");
+
+        (int128 _amount, uint end) = ve.locked(tokenId);
+        uint deposited = uint(uint128(_amount));
+
+        /// @dev conversion always lock for 4y:
+        uint _lock_duration = ((block.timestamp + (365 days * 4)) / 1 weeks * 1 weeks);
+        assertEq(deposited, amount, "veVARA BALANCE should be 100");
+        assertEq(end, _lock_duration, "END should be 100 days");
+
+
+        /// @dev user receive another batch of tokens:
+        vm.startPrank(admin);
+        main.mint(user, amount);
+        vm.stopPrank();
+
+        assertEq(main.balanceOf(user), amount, "bVARA BALANCE should be 100");
+        warp(365 days * 2);
+
+        /// @dev let's get the current lock expire ts and value:
+        (int128 _oldAmount, ) = ve.locked(tokenId);
+        uint oldAmount = uint(int256(_oldAmount));
+
+        /// @dev let's add to the tokenId and push the lock to 4y:
+        vm.startPrank(user);
+        ve.setApprovalForAll(address(main), true);
+        main.addToVe(tokenId, amount);
+        vm.stopPrank();
+
+        /// @dev let's get the new lock expire ts and value:
+        (int128 _newAmount, uint newLockEndsIn) = ve.locked(tokenId);
+        uint newAmount = uint(int256(_newAmount));
+        assertEq(newAmount, oldAmount + amount, "AMOUNT should be 200");
+
+        uint MAXTIME = 4 * 365 days;
+        uint _MAXTIME_ROUNDED = ((block.timestamp + MAXTIME) / 1 weeks * 1 weeks);
+
+        assertEq(newLockEndsIn, _MAXTIME_ROUNDED, "new lock should be 4y");
+    }
 }
