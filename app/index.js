@@ -1,4 +1,4 @@
-const DEBUG = true;
+const DEBUG = false;
 let CONTRACT, ACCOUNT, web3, provider, ethers;
 const CONTRACT_ADDRESS = '0xA5226986E9593F475c568892509CfD71d2746dA4';
 const EXPLORER_URL = 'https://explorer.kava.io';
