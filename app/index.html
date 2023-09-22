@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>KAVA BulkSender</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css"
+          integrity="sha384-xOolHFLEh07PJGoPkLv1IbcEPTNtaed2xpHsD9ESMhqIYd0nLMwNLD69Npy4HI+N" crossorigin="anonymous">
+    <style>
+        body {
+            padding-top: 50px;
+        }
+    </style>
+
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.5.1/dist/jquery.slim.min.js"
+            integrity="sha384-DfXdz2htPH0lsSSs5nCTpuj/zy4C+OGpamoFVy38MVBnE+IbbVYUew+OrCXaRkfj"
+            crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"
+            integrity="sha384-Fy6S3B9q64WdZWQUiU+q4/2Lc9npb8tCaSX9FK7E8HnRr0Jz8D6OP9dO5Vg3Q9ct"
+            crossorigin="anonymous"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/web3/3.0.0-rc.5/web3.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.21/lodash.min.js"
+            integrity="sha512-WFN04846sdKMIP5LKNphMaWzU7YpMyCU245etK3g/2ARYbPK9Ub18eG+ljU96qKRCWh+quCY7yefSmlkQw1ANQ=="
+            crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="ERC20_ABI.js"></script>
+    <script src="BulkSender_ABI.js"></script>
+    <script src="index.js"></script>
+    <script type="module">
+        import * as ethers from "https://cdnjs.cloudflare.com/ajax/libs/ethers/6.6.2/ethers.js";
+
+        $(document).ready(async function () {
+            await init(ethers);
+        });
+    </script>
+</head>
+<body>
+
+<div class="container">
+
+    <div class="accordion" id="accordionExample">
+        <div class="card">
+            <div class="card-header" id="headingOne">
+                <h2 class="mb-0">
+                    <button class="btn btn-link" type="button" data-toggle="collapse" data-target="#collapseOne"
+                            aria-expanded="true" aria-controls="collapseOne">
+                        Send same number of tokens to many wallets
+                    </button>
+                </h2>
+            </div>
+
+            <div id="collapseOne" class="collapse show" aria-labelledby="headingOne" data-parent="#accordionExample">
+                <div class="card-body">
+                    <form onsubmit="sendSameAmountToMany_Run(); return false;">
+                        <div class="form-group">
+                            <label for="sendSameAmountToMany_Token">ERC20 token address:</label>
+                            <input type="text" class="form-control" id="sendSameAmountToMany_Token"
+                                   aria-describedby="sendSameAmountToMany_TokenHelp" placeholder="0x..."
+                                   value="">
+                            <small id="sendSameAmountToMany_TokenHelp" class="form-text text-muted">Please, input a
+                                valid ERC20 address in KAVA network.</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="sendSameAmountToMany_List">List of addresses:</label>
+                            <textarea class="form-control" id="sendSameAmountToMany_List" rows="3"
+                                      placeholder="0x1,0x2,0x3"></textarea>
+                            <small id="sendSameAmountToMany_ListHelp" class="form-text text-muted">Paste addresses,
+                                separated by: , or spaces or new lines.</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="sendSameAmountToMany_Amount">Amount to send in decimal:</label>
+                            <input type="number" class="form-control" id="sendSameAmountToMany_Amount"
+                                   placeholder="Example: 100"
+                                   value="">
+                            <small id="sendSameAmountToMany_AmountHelp" class="form-text text-muted">Must be in decimal,
+                                we will convert according to tokens decimals.</small>
+                        </div>
+                        <span id="sendSameAmountToMany_SubmitHelp" class="form-text text-muted">(complete all fields to activate send)</span>
+                        <div class="form-group">
+                            <div class="form-row">
+                                <div class="col-2">
+                                    <button id="sendSameAmountToMany_Submit" type="submit" class="btn btn-danger">Bulk
+                                        send
+                                    </button>
+                                </div>
+                                <div class="col-1">
+                                    <button onclick="sendSameAmountToMany_Approve()"
+                                            id="sendSameAmountToMany_ApproveBtn" style="display:none" type="button"
+                                            class="btn btn-warning">Approve
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-header" id="headingTwo">
+                <h2 class="mb-0">
+                    <button class="btn btn-link collapsed" type="button" data-toggle="collapse"
+                            data-target="#collapseTwo" aria-expanded="false" aria-controls="collapseTwo">
+                        Send many numbers of tokens to many wallets
+                    </button>
+                </h2>
+            </div>
+            <div id="collapseTwo" class="collapse" aria-labelledby="headingTwo" data-parent="#accordionExample">
+                <div class="card-body">
+                    <form onsubmit="sendManyAmountToMany_Run(); return false;">
+                        <div class="form-group">
+                            <label for="sendManyAmountToMany_Token">ERC20 token address:</label>
+                            <input type="text" class="form-control" id="sendManyAmountToMany_Token"
+                                   aria-describedby="sendManyAmountToMany_TokenHelp" placeholder="0x..."
+                                   value="">
+                            <small id="sendManyAmountToMany_TokenHelp" class="form-text text-muted">Please, input a
+                                valid ERC20 address in KAVA network.</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="sendManyAmountToMany_List">List of addresses:</label>
+                            <textarea class="form-control" id="sendManyAmountToMany_List" rows="3"
+                                      placeholder="0x1,0x2,0x3">
+
+                            </textarea>
+                            <small id="sendManyAmountToMany_ListHelp" class="form-text text-muted">Paste addresses,
+                                separated by: , or spaces or new lines.</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="sendManyAmountToMany_Amount">Amounts to send in decimal:</label>
+                            <textarea class="form-control" id="sendManyAmountToMany_Amount" rows="3"
+                                      placeholder="Example: 100, 10.10, 9.1, 1000">
+
+                            </textarea>
+                            <small id="sendManyAmountToMany_AmountHelp" class="form-text text-muted">
+                                Must be in decimal; we will convert, according to token decimals.
+                            </small>
+                        </div>
+
+                        <div class="form-group">
+                            <div class="form-row">
+                                <div class="col-2">
+                                    <button id="sendManyAmountToMany_Submit" type="submit" class="btn btn-danger">Bulk
+                                        send
+                                    </button>
+                                </div>
+                                <div class="col-1">
+                                    <button onclick="sendManyAmountToMany_Approve()"
+                                            id="sendManyAmountToMany_ApproveBtn" style="display:none" type="button"
+                                            class="btn btn-warning">Approve
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <hr/>
+                        <p>
+                            <span id="sendManyAmountToMany_SubmitHelp" class="form-text text-muted">(complete all fields to activate send)</span>
+                        </p>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+</div>
+
+</body>
+</html>
