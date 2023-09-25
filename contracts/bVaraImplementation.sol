@@ -54,26 +54,7 @@ contract bVaraImplementation is Initializable, OFTUpgradeable
     mapping(address => VestPosition[]) public vestInfo;
     address public treasureAddress;
 /*
-    function initialize( ERC20 _asset, address _ve ) initializer public {
 
-        __OFTUpgradeable_init("bVara Token", "bVARA", address(0));
-
-        asset = _asset;
-        ve = IVotingEscrow(_ve);
-
-        /// @dev set default values for proxy:
-        minWithdrawDays = 90 days;
-        maxPenaltyPct = 90;
-
-        /// @dev set owner as whiteListed:
-        whiteList[_msgSender()] = true;
-        emit WhiteList(_msgSender(), true);
-
-        /// @dev whitelist 0 address as it is the minter:
-        whiteList[address(0)] = true;
-        emit WhiteList(address(0), true);
-
-    }
 */
 
     // @dev sets the LZ endpoint anytime if we need it:
@@ -298,8 +279,11 @@ contract bVaraImplementation is Initializable, OFTUpgradeable
         asset.approve(address(ve), _amount);
 
         /// @dev let's compute time left for 4y:
-        uint _lock_duration = ((4 * 365 days) / 1 weeks * 1 weeks) - 1;
-        ve.increase_unlock_time(_tokenId, _lock_duration);
+        uint _lock_duration = 4 * 365 days;
+        uint unlock_time = (block.timestamp + _lock_duration) / 1 weeks * 1 weeks; // Locktime is rounded down to weeks
+        /// @dev check if we need to push the unlock time:
+        if (unlock_time > ve.locked__end(_tokenId))
+            ve.increase_unlock_time(_tokenId, _lock_duration);
 
         /// @dev let's add to an existing position:
         ve.increase_amount(_tokenId, _amount);

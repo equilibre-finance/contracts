@@ -4,6 +4,7 @@ pragma solidity 0.8.13;
 import {Test} from "forge-std/Test.sol";
 import {console2} from "forge-std/console2.sol";
 import {Vara} from "contracts/Vara.sol";
+import {bVaraMock} from "./mock/bVaraMock.sol";
 import {bVaraImplementation} from "contracts/bVaraImplementation.sol";
 import {ERC20} from 'lib/solmate/src/tokens/ERC20.sol';
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
@@ -17,12 +18,12 @@ import {Gauge} from "contracts/Gauge.sol";
 
 import "forge-std/StdStorage.sol";
 
-contract bVaraImplementationTest is Test {
+contract bVaraTest is Test {
     using stdStorage for StdStorage;
     using Strings for uint256;
     Vara private vara;
-    bVaraImplementation private main;
-    bVaraImplementation private implementation;
+    bVaraMock private main;
+    bVaraMock private implementation;
     VotingEscrow private ve;
     Voter private voter;
     TransparentUpgradeableProxy private proxy;
@@ -36,7 +37,7 @@ contract bVaraImplementationTest is Test {
     address private votingEscrow = 0x35361C9c2a324F5FB8f3aed2d7bA91CE1410893A;
     address private voterAddress = 0x4eB2B9768da9Ea26E3aBe605c9040bC12F236a59;
     address private varaAddress = 0xE1da44C0dA55B075aE8E2e4b6986AdC76Ac77d73;
-    address private bVaraProxyAddress = 0x9d8054aaf108A5B5fb9fE27F89F3Db11E82fc94F;
+    address private bVaraProxyAddress = 0x9f80f639Ff87BE7299Eec54a08dB20dB3b3a4171;
 
     Gauge private gauge;
     ExternalBribe private bribe;
@@ -59,7 +60,7 @@ contract bVaraImplementationTest is Test {
     function setUp() public {
 
         // fork mainnet:
-        vm.createSelectFork("https://evm.data.equilibre.kava.io", 6_576_250);
+        vm.createSelectFork("https://evm.data.equilibre.kava.io", 6629400);
         assertEq(2222, block.chainid, "INVALID FORK NETWORK ID");
 
         vara = Vara(varaAddress);
@@ -68,9 +69,9 @@ contract bVaraImplementationTest is Test {
         proxyAdmin = new ProxyAdmin();
 
         /// @dev deploy proxy:
-        implementation = new bVaraImplementation();
+        implementation = new bVaraMock();
         bytes memory _data = abi.encodeWithSignature("initialize(address,address)", ERC20(address(vara)), address(ve));
-        main = bVaraImplementation(address(proxy = new TransparentUpgradeableProxy(address(implementation), address(proxyAdmin), _data)));
+        main = bVaraMock(address(proxy = new TransparentUpgradeableProxy(address(implementation), address(proxyAdmin), _data)));
         // @dev transfer contract to admin:
         main.transferOwnership(address(admin));
 
@@ -98,6 +99,46 @@ contract bVaraImplementationTest is Test {
         assertEq(voter.isWhitelisted(address(main)), true, "bVARA SHOULD BE WHITELISTED");
         vm.stopPrank();
     }
+
+    function testAddToTokenId() public {
+        writeTokenBalance(admin, address(vara), 1_000_000 ether);
+        _addToTokenId(6081);
+        _addToTokenId(6207);
+    }
+
+    function _addToTokenId(uint tokenId) private {
+        uint total = 200 ether;
+        uint amount = total / 2;
+        /// @dev mint and allow test tokens:
+        vm.startPrank(admin);
+        vara.approve(address(main), total);
+        vm.stopPrank();
+
+        address owner = ve.ownerOf(tokenId);
+
+        /// @dev mint tokens for user:
+        vm.startPrank(admin);
+        main.mint(owner, amount);
+        vm.stopPrank();
+
+        assertGe(main.balanceOf(owner), amount, "bVARA BALANCE should be >= 100");
+
+        /*
+        (int128 _oldAmount, uint oldLockEndsIn) = ve.locked(tokenId);
+        uint oldAmount = uint(int256(_oldAmount));
+        uint WEEK = 1 weeks;
+        uint _lock_duration = 4 * 365 days;
+        uint unlock_time = (block.timestamp + _lock_duration) / WEEK * WEEK; // Locktime is rounded down to weeks
+        */
+
+        /// @dev let's add to the tokenId and push the lock to 4y:
+        vm.startPrank(owner);
+        ve.setApprovalForAll(address(main), true);
+        main.addToVe(tokenId, amount);
+        vm.stopPrank();
+
+    }
+
 
     /// @dev test if revert when user try to deposit into implementation:
     function testDepositRevert() public {
@@ -331,7 +372,7 @@ contract bVaraImplementationTest is Test {
         uint getVestLength = main.getVestLength(user);
         assertEq(getVestLength, 1, "VEST LENGTH should be 1");
 
-        bVaraImplementation.VestPosition[] memory vestInfo = main.getAllVestInfo(user);
+        bVaraMock.VestPosition[] memory vestInfo = main.getAllVestInfo(user);
         assertEq(vestInfo[0].amount, amount, "VEST AMOUNT should be 100");
         assertEq(vestInfo[0].exitIn, 0, "VEST EXIT IN should be 0");
         assertEq(vestInfo[0].vestID, vestID, "VEST ID should be 0");
@@ -369,7 +410,7 @@ contract bVaraImplementationTest is Test {
         /// @dev user balance should be the same:
         assertEq(main.balanceOf(user), amount, "bVARA BALANCE should be 100");
 
-        bVaraImplementation.VestPosition[] memory vestInfo = main.getAllVestInfo(user);
+        bVaraMock.VestPosition[] memory vestInfo = main.getAllVestInfo(user);
         assertGt(vestInfo[0].exitIn, 0, "VEST EXIT IN should be gt 0");
 
         /// @dev should revert if try a new cancel:
@@ -475,20 +516,6 @@ contract bVaraImplementationTest is Test {
         assertGt(post - pre, 0, "bVARA BALANCE should be > 0");
 
     }
-
-    /// @dev test the vest day during 100 days:
-    /*
-    function testVestDay() public view{
-        uint minWithdrawDays = main.minWithdrawDays() / 1 days;
-        uint amount = 100;
-        for(uint i = minWithdrawDays; i > 0; i--) {
-            uint vestEnd = i * 1 days;
-            uint vestEndAt = block.timestamp + vestEnd;
-            (uint256 _received,,) = main.penalty(block.timestamp, block.timestamp, vestEndAt, amount);
-            console2.log("vest end in ", i, " days, received ", _received);
-        }
-    }
-    */
 
     function testPassedPeriod() public{
         (uint256 _received,,) = main.penalty(block.timestamp + 1 days, block.timestamp, block.timestamp, 100);
@@ -605,7 +632,7 @@ contract bVaraImplementationTest is Test {
         main.addToVe(tokenId, amount);
         vm.stopPrank();
 
-        /// @dev let's get the new lock expire ts and value:
+        // @dev let's get the new lock expire ts and value:
         (int128 _newAmount, uint newLockEndsIn) = ve.locked(tokenId);
         uint newAmount = uint(int256(_newAmount));
         assertEq(newAmount, oldAmount + amount, "AMOUNT should be 200");
@@ -615,4 +642,7 @@ contract bVaraImplementationTest is Test {
 
         assertEq(newLockEndsIn, _MAXTIME_ROUNDED, "new lock should be 4y");
     }
+
+
+
 }
